@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:animateLayoutChanges="true"
+    android:background="?attr/psa_general_background_color1">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/psa_transparent_color">
+
+        <RelativeLayout
+            android:id="@+id/psa_media_player_cover_status_container"
+            android:layout_width="@dimen/psa_media_cover_status_container_width"
+            android:layout_height="@dimen/psa_media_cover_status_container_height"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:background="@color/psa_transparent_color"
+            android:paddingEnd="@dimen/psa_media_cover_status_container_padding_end"
+            android:paddingStart="@dimen/psa_media_cover_status_container_padding_start"
+            android:paddingTop="@dimen/psa_media_cover_status_container_padding_top">
+
+            <RelativeLayout
+                android:id="@+id/psa_media_player_cover_image_container"
+                android:layout_width="@dimen/psa_media_player_cover_image_container_size_width"
+                android:layout_height="@dimen/psa_media_player_cover_image_container_size_height"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentTop="true"
+                android:background="@color/psa_transparent_color"
+                android:gravity="start|top">
+
+                <com.android.car.media.CrossfadeImageView
+                    android:id="@+id/album_art"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop" />
+
+                <View
+                    android:id="@+id/scrim"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="@dimen/media_scrim_alpha"
+                    android:background="@android:color/black" />
+
+            </RelativeLayout>
+
+            <LinearLayout
+                android:id="@+id/psa_media_player_mini_status_bar_container"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/psa_media_player_mini_status_bar_container_height"
+                android:layout_alignParentBottom="true"
+                android:layout_alignParentStart="true"
+                android:layout_gravity="start|bottom"
+                android:background="@color/psa_transparent_color"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/profile_name_text"
+                    style="@style/PsaTextContentSecondary2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center"
+                    android:drawableLeft="@drawable/psa_general_icon_profile"
+                    android:drawablePadding="@dimen/profile_name_text_drawable_padding"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:text="@string/profile_name_text"
+                    android:textColor="?attr/psa_general_content_color2" />
+            </LinearLayout>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/psa_media_player_action_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignBottom="@+id/psa_media_player_cover_status_container"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentTop="true"
+            android:layout_toRightOf="@+id/psa_media_player_cover_status_container"
+            android:background="@color/psa_transparent_color">
+
+
+            <LinearLayout
+                android:id="@+id/metadata"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_alignParentEnd="false"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentTop="true"
+                android:layout_gravity="top"
+                android:layout_marginTop="@dimen/psa_media_metadata_margin_top"
+                android:orientation="vertical"
+                android:paddingEnd="@dimen/psa_media_metadata_padding_end"
+                android:paddingStart="@dimen/psa_media_metadata_padding_start"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/title"
+                    style="@style/PsaTextContentPrimary1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="2"
+                    android:textColor="?attr/psa_general_major_color1" />
+
+                <TextView
+                    android:id="@+id/artist"
+                    style="@style/PsaTextContentSecondary1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/metadata_inter_line_space"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="?attr/psa_general_content_color1" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/custom_actions_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_alignParentTop="true"
+                android:background="@color/psa_transparent_color"
+                android:orientation="vertical">
+
+                <com.harman.psa.widget.button.PSACyclicButton
+                    android:id="@+id/shuffle"
+                    style="@style/IconButton"
+                    android:layout_width="@dimen/psa_media_action_size_width"
+                    android:layout_height="@dimen/psa_media_action_size_height"
+                    android:scaleType="centerInside" />
+
+                <com.harman.psa.widget.button.PSACyclicButton
+                    android:id="@+id/repeat"
+                    style="@style/IconButton"
+                    android:layout_width="@dimen/psa_media_action_size_width"
+                    android:layout_height="@dimen/psa_media_action_size_height"
+                    android:scaleType="centerInside" />
+					
+                <Button
+                    android:id="@+id/exit_button"
+                    style="@style/LabelButtonComponent"
+                    android:layout_width="@dimen/psa_media_action_size_width"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/psa_media_action_size_width"
+                    android:textSize="@dimen/psa_content_secondary_1_text_font_size"
+                    android:text="EXIT" />
+
+            </LinearLayout>
+
+
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto"
+                android:id="@+id/music_panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:layout_alignParentEnd="false"
+                android:layout_alignParentStart="true"
+                android:layout_toLeftOf="@+id/custom_actions_container"
+                android:background="?attr/psa_general_background_color2"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/controls"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="?attr/psa_general_background_color1"
+                    android:orientation="horizontal">
+
+                    <com.harman.psa.widget.longpressview.PSALongPressView
+                        android:id="@+id/prev"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:visibility="invisible">
+
+                        <ImageView
+                            android:id="@+id/prev_image"
+                            style="@style/IconButton"
+                            android:layout_width="@dimen/psa_media_action_size_width"
+                            android:layout_height="@dimen/psa_media_action_size_height"
+                            android:scaleType="centerInside" />
+                    </com.harman.psa.widget.longpressview.PSALongPressView>
+
+                    <com.harman.psa.widget.longpressview.PSALongPressView
+                        android:id="@+id/play_pause_container"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content">
+
+                        <com.android.car.media.util.widgets.PlayPauseStopImageView
+                            android:id="@+id/play_pause"
+                            style="@style/IconButton"
+                            android:layout_width="@dimen/psa_media_action_size_width"
+                            android:layout_height="@dimen/psa_media_action_size_height"
+                            android:layout_gravity="center"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/psa_media_button_icon_play_pause_stop" />
+                    </com.harman.psa.widget.longpressview.PSALongPressView>
+
+                    <com.harman.psa.widget.longpressview.PSALongPressView
+                        android:id="@+id/next"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:visibility="invisible">
+
+                        <ImageView
+                            android:id="@+id/next_image"
+                            style="@style/IconButton"
+                            android:layout_width="@dimen/psa_media_action_size_width"
+                            android:layout_height="@dimen/psa_media_action_size_height"
+                            android:scaleType="centerInside" />
+                    </com.harman.psa.widget.longpressview.PSALongPressView>
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/psa_media_player_progress_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentStart="true"
+            android:layout_below="@+id/psa_media_player_cover_status_container"
+            android:background="@color/psa_transparent_color"
+            android:paddingBottom="@dimen/psa_media_player_progress_container_padding_bottom"
+            android:paddingEnd="@dimen/psa_media_player_progress_container_padding_end"
+            android:paddingStart="@dimen/psa_media_player_progress_container_padding_start"
+            android:paddingTop="@dimen/psa_media_player_progress_container_padding_top">
+
+
+            <TextView
+                android:id="@+id/current_time"
+                style="@style/PsaDigitSecondary1"
+                android:layout_width="@dimen/psa_media_player_progress_time_text_width"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:gravity="end"
+                android:textColor="?attr/psa_general_content_color2" />
+
+            <TextView
+                android:id="@+id/duration"
+                style="@style/PsaDigitSecondary1"
+                android:layout_width="@dimen/psa_media_player_progress_time_text_width"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:gravity="start"
+                android:textColor="?attr/psa_general_content_color2" />
+
+            <com.harman.psa.widget.slider.PSASlider
+                android:id="@+id/seek_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_toLeftOf="@+id/duration"
+                android:layout_toRightOf="@+id/current_time"
+                android:paddingEnd="@dimen/psa_slider_thumb_with_border_size"
+                android:paddingStart="@dimen/psa_slider_thumb_with_border_size"
+                android:progressDrawable="@drawable/psa_slider_progress"
+                android:splitTrack="false"
+                android:thumb="@drawable/psa_slider_thumb"
+                app:show_value_indicator="false" />
+
+
+        </RelativeLayout>
+    </RelativeLayout>
+
+    <include layout="@layout/initial_no_content" />
+</FrameLayout>
+

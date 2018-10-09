@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- psa_media_player_cover_status_container -->
+    <dimen name="psa_media_cover_status_container_width">384px</dimen>
+    <dimen name="psa_media_cover_status_container_height">432px</dimen>
+    <dimen name="psa_media_cover_status_container_padding_top">48px</dimen>
+    <dimen name="psa_media_cover_status_container_padding_end">16px</dimen>
+    <dimen name="psa_media_cover_status_container_padding_start">48px</dimen>
+    <!-- psa_media_player_cover_image_container -->
+    <dimen name="psa_media_player_cover_image_container_size_width">320px</dimen>
+    <dimen name="psa_media_player_cover_image_container_size_height">340px</dimen>
+    <!-- psa_media_player_mini_status_bar_container -->
+    <dimen name="psa_media_player_mini_status_bar_container_height">48px</dimen>
+    <!-- profile_name_text -->
+    <dimen name="profile_name_text_drawable_padding">6px</dimen>
+
+
+    <!-- psa_media_player_action_container -->
+    <!-- metadata container -->
+    <dimen name="psa_media_metadata_margin_top">51px</dimen>
+    <dimen name="psa_media_metadata_padding_end">160px</dimen>
+    <dimen name="psa_media_metadata_padding_start">48px</dimen>
+    <!-- buttons -->
+    <dimen name="psa_media_action_size_width">160px</dimen>
+    <dimen name="psa_media_action_size_height">170px</dimen>
+
+
+    <!-- psa_media_player_progress_container -->
+    <dimen name="psa_media_player_progress_container_padding_bottom">16px</dimen>
+    <dimen name="psa_media_player_progress_container_padding_end">160px</dimen>
+    <dimen name="psa_media_player_progress_container_padding_start">48px</dimen>
+    <dimen name="psa_media_player_progress_container_padding_top">32px</dimen>
+    <dimen name="psa_media_player_progress_time_text_width">96px</dimen>
+
+
+    <!-- !!!!!!! This should be defined in the library -->
+    <!-- Text Content Primary 1-->
+    <dimen name="psa_content_primary_1_text_font_size">46sp</dimen>
+    <dimen name="psa_content_primary_1_text_line_spacing">56sp</dimen>
+    <!-- Text Content Secondary 1-->
+    <dimen name="psa_content_secondary_1_text_font_size">38sp</dimen>
+    <dimen name="psa_content_secondary_1_text_line_spacing">48sp</dimen>
+    <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
+
+    </resources>
