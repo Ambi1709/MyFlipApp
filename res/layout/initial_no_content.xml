@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Copyright 2016, The Android Open Source Project
 
   Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,13 +14,12 @@
   limitations under the License.
 -->
 
-<com.android.car.view.MaxWidthLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<com.android.car.view.MaxWidthLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:carMaxWidth="@dimen/apps_max_content_width"
-    android:animateLayoutChanges="true" >
+    android:animateLayoutChanges="true"
+    app:carMaxWidth="@dimen/apps_max_content_width">
 
     <RelativeLayout
         android:id="@+id/initial_view"
@@ -33,8 +31,8 @@
             android:id="@+id/loading_spinner"
             android:layout_width="match_parent"
             android:layout_height="@dimen/car_list_item_height"
-            android:layout_centerInParent="true"
             android:layout_alignWithParentIfMissing="true"
+            android:layout_centerInParent="true"
             android:indeterminateDrawable="@drawable/music_buffering"
             android:visibility="gone" />
 

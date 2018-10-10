@@ -95,4 +95,19 @@ public class MediaConstants {
      */
     public static final String EXTRA_REPEATED_CUSTOM_ACTION_BUTTON_ON_DOWN =
             "com.google.android.gms.car.media.CUSTOM_ACTION.ON_DOWN_EVENT";
+
+    public static final int MEDIA_APP = 0;
+    public static final int RADIO_APP = 1;
+
+    public static final String ACTION_SHUFFLE_STATE = "com.android.car.media.SHUFFLE_STATE";
+    public static final String ACTION_REPEAT_STATE = "com.android.car.media.REPEAT_STATE";
+
+
+    //Stubs
+    public static final String SOURCE_TYPE_USB = "usb";
+    public static final String SOURCE_TYPE_BT = "bluetooth";
+    public static final String SOURCE_TYPE_AUX = "aux";
+    public static final String SOURCE_TYPE_IPOD = "ipod";
+    public static final String SOURCE_TYPE_DISC = "disc";
+    public static final String SOURCE_TYPE_FOLDER = "folder";
 }

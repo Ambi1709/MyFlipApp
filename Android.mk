@@ -41,13 +41,16 @@ LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res \
 # Include support-v7-appcompat, if not already included
 ifeq (,$(findstring android-support-v7-appcompat,$(LOCAL_STATIC_JAVA_LIBRARIES)))
 LOCAL_RESOURCE_DIR += frameworks/support/v7/appcompat/res
+LOCAL_RESOURCE_DIR += frameworks/support/design/res
 LOCAL_AAPT_FLAGS += --extra-packages android.support.v7.appcompat
+LOCAL_AAPT_FLAGS += --extra-packages android.support.design
 LOCAL_STATIC_JAVA_LIBRARIES += android-support-v7-appcompat
+LOCAL_STATIC_JAVA_LIBRARIES += android-support-design
 endif
 
 # Include widget, if not already included
-#ifeq (,$(findstring psawidget,$(LOCAL_STATIC_JAVA_AAR_LIBRARIES)))
-LOCAL_STATIC_JAVA_AAR_LIBRARIES := psawidget
+#ifeq (,$(findstring widgets,$(LOCAL_STATIC_JAVA_AAR_LIBRARIES)))
+LOCAL_STATIC_JAVA_AAR_LIBRARIES := widgets
 LOCAL_AAPT_FLAGS += --auto-add-overlay \
 					--extra-packages com.harman.psa.widget
 #endif
@@ -58,13 +61,14 @@ LOCAL_DEX_PREOPT := false
 
 include packages/apps/Car/libs/car-stream-ui-lib/car-stream-ui-lib.mk
 include packages/apps/Car/libs/car-apps-common/car-apps-common.mk
+include packages/services/Car/car-support-lib/car-support.mk
 
 include $(BUILD_PACKAGE)
 
 include $(CLEAR_VARS)
 
 BUILD_PSA_LIB := true
-LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES := psawidget:libs/psawidget.aar
+LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES := widgets:libs/widgets.aar
 
 include $(BUILD_MULTI_PREBUILT)
 

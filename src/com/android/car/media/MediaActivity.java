@@ -1,115 +1,202 @@
-/*
- * Copyright (C) 2016 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.android.car.media;
 
-import android.content.ComponentName;
-import android.content.Intent;
 import android.os.Bundle;
-import android.provider.MediaStore;
+import android.os.IBinder;
+import android.support.annotation.Nullable;
+import android.widget.Toast;
 import android.util.Log;
-import com.android.car.app.CarDrawerActivity;
-import com.android.car.app.CarDrawerAdapter;
-import com.android.car.media.drawer.MediaDrawerController;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
+import android.provider.MediaStore;
 
-/**
- * This activity controls the UI of media. It also updates the connection status for the media app
- * by broadcast. Drawer menu is controlled by {@link MediaDrawerController}.
- */
-public class MediaActivity extends CarDrawerActivity
+import android.view.LayoutInflater;
+import android.view.View;
+
+import android.media.AudioAttributes;
+import android.media.session.MediaController;
+import android.car.Car;
+import android.car.CarNotConnectedException;
+import android.car.media.CarAudioManager;
+
+import com.harman.psa.widget.PSABaseActivity;
+import com.harman.psa.widget.PSABaseNavigationManager;
+import com.harman.psa.widget.PSATabBarManager;
+import com.harman.psa.widget.tabview.PSATabView;
+import com.harman.psa.widget.toast.PSAToast;
+import com.harman.psa.widget.PSAAppBarButton;
+
+
+public class MediaActivity extends PSABaseActivity
         implements MediaPlaybackFragment.PlayQueueRevealer {
+    private static final String TAG = "MediaPlayerActivity";
+
     private static final String ACTION_MEDIA_APP_STATE_CHANGE
             = "android.intent.action.MEDIA_APP_STATE_CHANGE";
     private static final String EXTRA_MEDIA_APP_FOREGROUND
             = "android.intent.action.MEDIA_APP_STATE";
 
-    private static final String TAG = "MediaActivity";
+    private static final String TAB_VISIBLE_STATE = "tabVisibleState";
 
-    /**
-     * Whether or not {@link #onStart()} has been called.
-     */
-    private boolean mIsStarted;
+    private static final String SHARED_PREFS_NAME = "com.android.car.media.prefs";
+    private static final String LAST_ACTIVE_APP = "LAST_ACTIVE_APP_KEY";
 
-    /**
-     * {@code true} if there was a request to change the content fragment of this Activity when
-     * it is not started. Then, when onStart() is called, the content fragment will be added.
-     *
-     * <p>This prevents a bug where the content fragment is added when the app is not running,
-     * causing a StateLossException.
-     */
-    private boolean mContentFragmentChangeQueued;
+    private static int mActiveApp;
 
-    private MediaDrawerController mDrawerController;
-    private MediaPlaybackFragment mMediaPlaybackFragment;
+    private MediaPlaybackModel mMediaPlaybackModel;
+
+    private SharedPreferences mSharedPrefs;
+
+    private MediaNavigationManager mNavigationManager;
+
+    /* App bar buttons */
+    private PSAAppBarButton mBurgerMenuButton;
+    private PSAAppBarButton mMediaSearchButton;
+    private PSAAppBarButton mAppSwitchButton;
+    private View mRadioSwitchButton;
+    private View mMediaSwitchButton;
+
+    private final MediaManager.Listener mListener = new MediaManager.Listener() {
+        @Override
+        public void onMediaAppChanged(ComponentName componentName) {
+            sendMediaConnectionStatusBroadcast(componentName, MediaConstants.MEDIA_CONNECTED);
+        }
+
+        @Override
+        public void onStatusMessageChanged(String msg) {
+        }
+    };
 
     @Override
     protected void onStart() {
         super.onStart();
-        Intent i = new Intent(ACTION_MEDIA_APP_STATE_CHANGE);
-        i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, true);
-        sendBroadcast(i);
 
-        mIsStarted = true;
+        mNavigationManager = new MediaNavigationManager(this, getSupportFragmentManager(),
+                getMainContentContainerId());
+        mNavigationManager.setActiveApp(mActiveApp);
 
-        if (mContentFragmentChangeQueued) {
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "Content fragment queued. Attaching now.");
-            }
-            showMediaPlaybackFragment();
-            mContentFragmentChangeQueued = false;
+        getTabBarManager().addOnTabChangeListener(mNavigationManager);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().hide();
+        }
+
+        setAppBarButtonsForActiveApp();
+
+        PSATabBarManager tabManager = getTabBarManager();
+        mNavigationManager.formMediaTabBar(tabManager, this);
+        mNavigationManager.showActiveApp();
+
+        mMediaPlaybackModel = new MediaPlaybackModel(MediaActivity.this, null /* browserExtras */);
+        mMediaPlaybackModel.start();
+
+        if (mActiveApp == MediaConstants.MEDIA_APP){
+            Intent i = new Intent(ACTION_MEDIA_APP_STATE_CHANGE);
+            i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, true);
+            sendBroadcast(i);
         }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        Intent i = new Intent(ACTION_MEDIA_APP_STATE_CHANGE);
-        i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, false);
-        sendBroadcast(i);
 
-        mIsStarted = false;
+        /* Keep last active app */
+        mSharedPrefs.edit().putInt(LAST_ACTIVE_APP, mActiveApp).commit();
+
+        if (mActiveApp == MediaConstants.MEDIA_APP){
+            Intent i = new Intent(ACTION_MEDIA_APP_STATE_CHANGE);
+            i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, false);
+            sendBroadcast(i);
+        }
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        // The drawer must be initialized before the super call because CarDrawerActivity.onCreate
-        // looks up the rootAdapter from its subclasses. The MediaDrawerController provides the
-        // root adapter.
-        mDrawerController = new MediaDrawerController(this);
-
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setMainContent(R.layout.media_activity);
-        MediaManager.getInstance(this).addListener(mListener);
+        mSharedPrefs = getApplicationContext().getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
+        mActiveApp = mSharedPrefs.getInt(LAST_ACTIVE_APP, MediaConstants.MEDIA_APP);
+
+        /* Open Tab bar button */
+        View burgerButton = LayoutInflater.from(this).inflate(
+                R.layout.psa_view_burger_menu_button,
+                getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_1),
+                false);
+        mBurgerMenuButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_1, burgerButton);
+        getAppBarView().replaceAppBarButton(mBurgerMenuButton);
+        burgerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (getTabBarManager().isTabBarVisible()){
+                    getTabBarManager().hideTabBar();
+                }else{
+                    getTabBarManager().showTabBar();
+                }
+            }
+        });
+
+        /* Switch to App button */
+        mRadioSwitchButton = LayoutInflater.from(MediaActivity.this).inflate(
+                R.layout.psa_view_radio_open_button,
+                getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_2),
+                false);
+        mRadioSwitchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switchApp();
+            }
+        });
+        mMediaSwitchButton = LayoutInflater.from(MediaActivity.this).inflate(
+                R.layout.psa_view_media_open_button,
+                getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_2),
+                false);
+        mMediaSwitchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switchApp();
+            }
+        });
+
+        /* media search button */
+        View mediaSearchButton = LayoutInflater.from(MediaActivity.this).inflate(
+                R.layout.psa_view_media_search_button,
+                getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_4),
+                false);
+        mMediaSearchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_4, mediaSearchButton);
+        getAppBarView().replaceAppBarButton(mMediaSearchButton);
+        mediaSearchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                PSAToast.makeText(MediaActivity.this, "To be Implemented", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+
+        if (savedInstanceState != null) {
+            boolean isVisible = savedInstanceState.getBoolean(TAB_VISIBLE_STATE);
+            if (isVisible) {
+                getTabBarManager().showTabBar();
+                getAppBarView().replaceAppBarButton(mBurgerMenuButton);
+            } else {
+                getTabBarManager().hideTabBar();
+            }
+            mActiveApp = savedInstanceState.getInt(LAST_ACTIVE_APP);
+        }
+        if (getTabBarManager().isTabBarVisible()) {
+            getAppBarView().removeAppBarButton(mBurgerMenuButton.getPosition());
+        }
+        /* Hide right bar since we don't need one for media app*/
+        getAppBarView().hideRightBar();
+
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-        // Send the broadcast to let the current connected media app know it is disconnected now.
-        sendMediaConnectionStatusBroadcast(
-                MediaManager.getInstance(this).getCurrentComponent(),
-                MediaConstants.MEDIA_DISCONNECTED);
-        mDrawerController.cleanup();
-        MediaManager.getInstance(this).removeListener(mListener);
-        mMediaPlaybackFragment = null;
-    }
-
-    @Override
-    protected CarDrawerAdapter getRootAdapter() {
-        return mDrawerController.getRootAdapter();
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putInt(LAST_ACTIVE_APP, mActiveApp);
+        super.onSaveInstanceState(savedInstanceState);
     }
 
     @Override
@@ -117,7 +204,6 @@ public class MediaActivity extends CarDrawerActivity
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "onResumeFragments");
         }
-
         super.onResumeFragments();
         handleIntent(getIntent());
     }
@@ -130,16 +216,37 @@ public class MediaActivity extends CarDrawerActivity
         }
 
         setIntent(intent);
-        closeDrawer();
     }
 
+
     @Override
-    public void onBackPressed() {
-        if (mMediaPlaybackFragment != null) {
-            mMediaPlaybackFragment.closeOverflowMenu();
-        }
-        super.onBackPressed();
+    public PSABaseNavigationManager getBaseNavigationManager() {
+        return mNavigationManager;
     }
+
+    protected void switchApp(){
+        if (mActiveApp == MediaConstants.MEDIA_APP){
+            mActiveApp = MediaConstants.RADIO_APP;
+            //Pause playback
+            MediaController.TransportControls transportControls =
+                    mMediaPlaybackModel.getTransportControls();
+            transportControls.pause();
+            mMediaPlaybackModel.stop();
+            // Send the broadcast to let the current connected media app know it is disconnected now.
+            sendMediaConnectionStatusBroadcast(
+                    MediaManager.getInstance(this).getCurrentComponent(),
+                    MediaConstants.MEDIA_DISCONNECTED);
+            MediaManager.getInstance(this).removeListener(mListener);
+        }else{
+            mActiveApp = MediaConstants.MEDIA_APP;
+            MediaManager.getInstance(this).addListener(mListener);
+            mMediaPlaybackModel.start();
+        }
+        mNavigationManager.setActiveApp(mActiveApp);
+        mNavigationManager.formMediaTabBar(getTabBarManager(), this);
+        mNavigationManager.showActiveApp();
+    }
+
 
     private void handleIntent(Intent intent) {
         Bundle extras = null;
@@ -185,7 +292,7 @@ public class MediaActivity extends CarDrawerActivity
     }
 
     private void sendMediaConnectionStatusBroadcast(ComponentName componentName,
-            String connectionStatus) {
+                                                    String connectionStatus) {
         // There will be no current component if no media app has been chosen before.
         if (componentName == null) {
             return;
@@ -197,47 +304,19 @@ public class MediaActivity extends CarDrawerActivity
         sendBroadcast(intent);
     }
 
-    private void showMediaPlaybackFragment() {
-        // If the fragment has already been created, then it has been attached already.
-        if (mMediaPlaybackFragment != null) {
-            return;
-        }
-
-        mMediaPlaybackFragment = new MediaPlaybackFragment();
-        mMediaPlaybackFragment.setPlayQueueRevealer(this);
-
-       getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, mMediaPlaybackFragment)
-                .commit();
-    }
-
     @Override
     public void showPlayQueue() {
-        mDrawerController.showPlayQueue();
+        // mDrawerController.showPlayQueue();
     }
 
-    private final MediaManager.Listener mListener = new MediaManager.Listener() {
-        @Override
-        public void onMediaAppChanged(ComponentName componentName) {
-            sendMediaConnectionStatusBroadcast(componentName, MediaConstants.MEDIA_CONNECTED);
 
-            // Since this callback happens asynchronously, ensure that the Activity has been
-            // started before changing fragments. Otherwise, the attach fragment will throw
-            // an IllegalStateException due to Fragment's checkStateLoss.
-            if (mIsStarted) {
-                if (Log.isLoggable(TAG, Log.DEBUG)) {
-                    Log.d(TAG, "onMediaAppChanged: attaching content fragment");
-                }
-                showMediaPlaybackFragment();
-            } else {
-                if (Log.isLoggable(TAG, Log.DEBUG)) {
-                    Log.d(TAG, "onMediaAppChanged: queuing content fragment change");
-                }
-                mContentFragmentChangeQueued = true;
-            }
+    private void setAppBarButtonsForActiveApp(){
+        if (mActiveApp == MediaConstants.RADIO_APP){
+            mAppSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_2, mMediaSwitchButton);
+        }else{
+            mAppSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_2, mRadioSwitchButton);
         }
+        getAppBarView().replaceAppBarButton(mAppSwitchButton);
+    }
 
-        @Override
-        public void onStatusMessageChanged(String msg) {}
-    };
 }

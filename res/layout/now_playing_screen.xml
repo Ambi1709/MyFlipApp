@@ -141,15 +141,6 @@
                     android:layout_width="@dimen/psa_media_action_size_width"
                     android:layout_height="@dimen/psa_media_action_size_height"
                     android:scaleType="centerInside" />
-					
-                <Button
-                    android:id="@+id/exit_button"
-                    style="@style/LabelButtonComponent"
-                    android:layout_width="@dimen/psa_media_action_size_width"
-                    android:layout_height="wrap_content"
-                    android:minHeight="@dimen/psa_media_action_size_width"
-                    android:textSize="@dimen/psa_content_secondary_1_text_font_size"
-                    android:text="EXIT" />
 
             </LinearLayout>
 
@@ -173,50 +164,30 @@
                     android:background="?attr/psa_general_background_color1"
                     android:orientation="horizontal">
 
-                    <com.harman.psa.widget.longpressview.PSALongPressView
+                    <ImageView
                         android:id="@+id/prev"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        style="@style/IconButton"
+                        android:layout_width="@dimen/psa_media_action_size_width"
+                        android:layout_height="@dimen/psa_media_action_size_height"
                         android:layout_gravity="center_horizontal"
-                        android:visibility="invisible">
+                        android:scaleType="centerInside" />
 
-                        <ImageView
-                            android:id="@+id/prev_image"
-                            style="@style/IconButton"
-                            android:layout_width="@dimen/psa_media_action_size_width"
-                            android:layout_height="@dimen/psa_media_action_size_height"
-                            android:scaleType="centerInside" />
-                    </com.harman.psa.widget.longpressview.PSALongPressView>
+                    <com.android.car.media.util.widgets.PlayPauseStopImageView
+                        android:id="@+id/play_pause"
+                        style="@style/IconButton"
+                        android:layout_width="@dimen/psa_media_action_size_width"
+                        android:layout_height="@dimen/psa_media_action_size_height"
+                        android:layout_gravity="center"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/psa_media_button_icon_play_pause_stop" />
 
-                    <com.harman.psa.widget.longpressview.PSALongPressView
-                        android:id="@+id/play_pause_container"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content">
-
-                        <com.android.car.media.util.widgets.PlayPauseStopImageView
-                            android:id="@+id/play_pause"
-                            style="@style/IconButton"
-                            android:layout_width="@dimen/psa_media_action_size_width"
-                            android:layout_height="@dimen/psa_media_action_size_height"
-                            android:layout_gravity="center"
-                            android:scaleType="centerInside"
-                            android:src="@drawable/psa_media_button_icon_play_pause_stop" />
-                    </com.harman.psa.widget.longpressview.PSALongPressView>
-
-                    <com.harman.psa.widget.longpressview.PSALongPressView
+                    <ImageView
                         android:id="@+id/next"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        style="@style/IconButton"
+                        android:layout_width="@dimen/psa_media_action_size_width"
+                        android:layout_height="@dimen/psa_media_action_size_height"
                         android:layout_gravity="center_horizontal"
-                        android:visibility="invisible">
-
-                        <ImageView
-                            android:id="@+id/next_image"
-                            style="@style/IconButton"
-                            android:layout_width="@dimen/psa_media_action_size_width"
-                            android:layout_height="@dimen/psa_media_action_size_height"
-                            android:scaleType="centerInside" />
-                    </com.harman.psa.widget.longpressview.PSALongPressView>
+                        android:scaleType="centerInside" />
                 </LinearLayout>
 
             </LinearLayout>

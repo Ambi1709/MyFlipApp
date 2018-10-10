@@ -3,4 +3,16 @@
     <!-- Music -->
     <!-- Show demo profile name-->
     <string name="profile_name_text">[Profile Name]</string>
+
+
+    <!-- Tabs labels -->
+    <string name="settings_media_tab">SETTINGS</string>
+    <!-- Media tabs labels -->
+    <string name="player_media_tab">PLAYER</string>
+    <string name="tracklist_media_tab">TRACKLIST</string>
+    <string name="library_media_tab">LIBRARY</string>
+    <!-- Radio tabs labels -->
+    <string name="player_radio_tab">PLAYER</string>
+    <string name="station_list_radio_tab">STATION LIST</string>
+    <string name="favourites_radio_tab">FAVOURITES</string>
 </resources>

@@ -46,17 +46,27 @@ import java.util.List;
 public class MediaManager {
     private static final String TAG = "GH.MediaManager";
     private static final String PREFS_FILE_NAME = "MediaClientManager.Preferences";
-    /** The package of the most recently used media component **/
+    /**
+     * The package of the most recently used media component
+     **/
     private static final String PREFS_KEY_PACKAGE = "media_package";
-    /** The class of the most recently used media class **/
+    /**
+     * The class of the most recently used media class
+     **/
     private static final String PREFS_KEY_CLASS = "media_class";
-    /** Third-party defined application theme to use **/
+    /**
+     * Third-party defined application theme to use
+     **/
     private static final String THEME_META_DATA_NAME = "com.google.android.gms.car.application.theme";
 
     public static final String KEY_MEDIA_COMPONENT = "media_component";
-    /** Intent extra specifying the package with the MediaBrowser **/
+    /**
+     * Intent extra specifying the package with the MediaBrowser
+     **/
     public static final String KEY_MEDIA_PACKAGE = "media_package";
-    /** Intent extra specifying the MediaBrowserService **/
+    /**
+     * Intent extra specifying the MediaBrowserService
+     **/
     public static final String KEY_MEDIA_CLASS = "media_class";
 
     /**
@@ -93,6 +103,7 @@ public class MediaManager {
 
         /**
          * Called when we want to show a message on playback screen.
+         *
          * @param msg if null, dismiss any previous message and
          *            restore the track title and subtitle.
          */
@@ -258,7 +269,7 @@ public class MediaManager {
      * in the {@code mPendingSearchIntent} and process it when the app is connected.
      *
      * @param intent The intent containing the query and
-     *            MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH action
+     *               MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH action
      */
     public void processSearchIntent(Intent intent) {
         if (Log.isLoggable(TAG, Log.VERBOSE)) {
@@ -327,7 +338,7 @@ public class MediaManager {
 
 
     private ComponentName getMediaBrowserComponent(ServiceAdapter serviceAdapter,
-            final String packageName) {
+                                                   final String packageName) {
         List<ResolveInfo> queryResults = serviceAdapter.queryAllowedServices(MEDIA_BROWSER_INTENT);
         if (queryResults != null) {
             for (int i = 0, N = queryResults.size(); i < N; ++i) {
@@ -455,7 +466,7 @@ public class MediaManager {
             Context packageContext = mContext.createPackageContext(packageName, 0);
             packageContext.setTheme(appTheme);
             Resources.Theme theme = packageContext.getTheme();
-            ta = theme.obtainStyledAttributes(new int[] {
+            ta = theme.obtainStyledAttributes(new int[]{
                     android.R.attr.colorPrimary,
                     R.attr.psa_general_major_color1,
                     android.R.attr.colorPrimaryDark
@@ -531,6 +542,7 @@ public class MediaManager {
 
         public int mType;
         public String mMsg;
+
         public PendingMsg(int type, String msg) {
             mType = type;
             mMsg = msg;
@@ -580,7 +592,8 @@ public class MediaManager {
         }
 
         @Override
-        public void onConnectionSuspended() {}
+        public void onConnectionSuspended() {
+        }
 
         @Override
         public void onConnectionFailed() {
