@@ -10,8 +10,8 @@ import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.InsetDrawable;
-import android.media.MediaDescription;
 import android.media.MediaMetadata;
+import android.media.browse.MediaBrowser;
 import android.media.session.MediaController;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
@@ -21,9 +21,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.IntDef;
-import android.support.annotation.Nullable;
 import android.support.annotation.NonNull;
-import android.support.v4.app.Fragment;
+import android.support.annotation.Nullable;
 import android.support.v4.content.res.ResourcesCompat;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
@@ -31,7 +30,6 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -40,23 +38,18 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.SeekBar;
-import android.view.ViewGroup;
 import android.widget.Toast;
 
-import com.android.car.app.CarDrawerActivity;
 import com.android.car.apps.common.BitmapDownloader;
 import com.android.car.apps.common.BitmapWorkerOptions;
 import com.android.car.apps.common.ColorChecker;
 import com.android.car.apps.common.util.Assert;
+import com.android.car.media.R;
 import com.android.car.media.util.widgets.PlayPauseStopImageView;
-
-import com.harman.psa.widget.longpressview.PSALongPressView;
-import com.harman.psa.widget.longpressview.OnLongClickListener;
-import com.harman.psa.widget.button.PSACyclicButton;
-import com.harman.psa.widget.button.OnCycleChangeListener;
-import com.harman.psa.widget.PSABaseFragment;
 import com.harman.psa.widget.PSAAppBarButton;
+import com.harman.psa.widget.PSABaseFragment;
+import com.harman.psa.widget.button.OnCycleChangeListener;
+import com.harman.psa.widget.button.PSACyclicButton;
 import com.harman.psa.widget.dropdowns.DropdownButton;
 import com.harman.psa.widget.dropdowns.DropdownDialog;
 import com.harman.psa.widget.dropdowns.DropdownHelper;
@@ -64,17 +57,13 @@ import com.harman.psa.widget.dropdowns.DropdownItem;
 import com.harman.psa.widget.dropdowns.listener.OnDismissListener;
 import com.harman.psa.widget.dropdowns.listener.OnDropdownButtonClickEventListener;
 import com.harman.psa.widget.dropdowns.listener.OnDropdownItemClickListener;
-import com.harman.psa.widget.feedback.PSAFeedbackDialog;
 import com.harman.psa.widget.toast.PSAToast;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.HashMap;
 
-import com.android.car.media.R;
-
-import android.media.browse.MediaBrowser;
 
 /**
  * Fragment that displays the media playback UI.
@@ -114,7 +103,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     /**
      * The amount of time between seek bar updates.
      */
-    private static final long SEEK_BAR_UPDATE_TIME_INTERVAL_MS = 500;
+    private static final long SEEK_BAR_UPDATE_TIME_INTERVAL_MS = 1000;
 
     /**
      * The delay time before automatically closing the overflow controls view.
@@ -157,8 +146,8 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     private PSACyclicButton mShuffleButton;
     private View mCustomActionsPanel;
 
-    private int mShuffleState = 0;
-    private int mRepeatState = 0;
+    private int mShuffleState = -1;
+    private int mRepeatState = -1;
 
     private View mMusicPanel;
     private View mControlsView;
@@ -171,7 +160,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
     private long mStartProgress;
     private long mStartTime;
-    private MediaDescription mCurrentTrack;
+    private MediaMetadata mCurrentTrackMetadata;
     private boolean mShowingMessage;
 
     private View mInitialNoContentView;
@@ -192,7 +181,6 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     private boolean mReturnFromOnStop;
     @ViewType
     private int mCurrentView;
-    private PlayQueueRevealer mPlayQueueRevealer;
 
     /* App bar buttons */
     private PSAAppBarButton mSourceSwitchButton;
@@ -202,20 +190,12 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     private HashMap<Integer, Integer> mSourceIconMap = new HashMap();
     private int mSourceId = 0;
 
-    /**
-     * An interface that is responsible for displaying a list of the items in the user's currently
-     * playing queue.
-     */
-    interface PlayQueueRevealer {
-        void showPlayQueue();
-    }
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         Context context = getContext();
-        mMediaPlaybackModel = new MediaPlaybackModel(context, null /* browserExtras */);
+        mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
         mMediaPlaybackModel.addListener(this);
 
         mTelephonyManager =
@@ -225,14 +205,6 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         mShowTitleDelayMs = res.getInteger(R.integer.new_album_art_fade_in_duration);
         mDefaultScrimAlpha = res.getFloat(R.dimen.media_scrim_alpha);
         mDarkenedScrimAlpha = res.getFloat(R.dimen.media_scrim_darkened_alpha);
-    }
-
-    /**
-     * Sets the object that is responsible for displaying the current list of items in the user's
-     * play queue.
-     */
-    void setPlayQueueRevealer(PlayQueueRevealer revealer) {
-        mPlayQueueRevealer = revealer;
     }
 
     @Override
@@ -261,8 +233,6 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
                         mAlbumArtView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
                     }
                 });
-
-        setBackgroundColor(getContext().getColor(R.color.music_default_artwork));
 
         mTitleView = v.findViewById(R.id.title);
         mArtistView = v.findViewById(R.id.artist);
@@ -294,6 +264,23 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        mShuffleState = mMediaPlaybackModel.getShuffleState();
+        mRepeatState = mMediaPlaybackModel.getRepeatState();
+
+        if(mShuffleState == -1){
+            mShuffleButton.setEnabled(false);
+        }else{
+            mShuffleButton.setEnabled(true);
+            mShuffleButton.setPosition(mShuffleState);
+        }
+
+        if(mRepeatState == -1){
+            mRepeatButton.setEnabled(false);
+        }else{
+            mRepeatButton.setEnabled(true);
+            mRepeatButton.setPosition(mRepeatState);
+        }
+
         /* source switch button */
         //TODO implement source selection
         generateSourceIconMap();
@@ -304,70 +291,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), getActivity().getTheme()));
         mSourceSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_3, sourceSwitchButton);
         getAppBarView().replaceAppBarButton(mSourceSwitchButton);
-        sourceSwitchButton.setOnDropdownButtonClickEventListener(new OnDropdownButtonClickEventListener() {
-            @Override
-            public void onClick(DropdownButton view) {
-                DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
-                        getActivity().getTheme()));
-                DropdownDialog.setDefaultTextColor(Color.BLACK);
-
-                mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.VERTICAL);
-                mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
-                        getActivity().getTheme()));
-                mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
-
-                // TODO refresh sources list
-                int[] i = {0};
-                mSourceIconMap.entrySet().stream().forEach(e -> {
-                    mDropdownDialog.addDropdownItem(new DropdownItem(++(i[0]), e.getKey() + " source", e.getValue()));
-                });
-
-                //Set listener for action item clicked
-                mDropdownDialog.setOnActionItemClickListener(new OnDropdownItemClickListener() {
-                    @Override
-                    public void onItemClick(DropdownItem item) {
-                        //here we can filter which action item was clicked with pos or actionId parameter
-                        String title = item.getTitle();
-                        PSAToast.makeText(getContext(), title + " selected", Toast.LENGTH_SHORT).show();
-                        if (!item.isSticky()) {
-                            mDropdownDialog.removeDropdownItem(item);
-                        }
-                        mSourceId = item.getItemId();
-                        ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
-                                ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), getActivity().getTheme()));
-                        
-                        /***** Temporary *****/
-                        mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {});
-                        mMediaPlaybackModel.getMediaBrowser().subscribe("/system/media/audio/ringtones%", new MediaBrowser.SubscriptionCallback() {
-                            @Override
-                            public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
-                                Log.d(TAG, "onChildrenLoaded " + parentId);
-                                MediaBrowser.MediaItem item = children.get(0);
-
-                                MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-                                if (controls != null) {
-                                    controls.pause();
-                                    controls.playFromMediaId(item.getMediaId(), item.getDescription().getExtras());
-                                }
-                            }
-
-                            @Override
-                            public void onError(String parentId) {
-                                Log.e(TAG, "Error loading children of: /system/media/audio/ringtones%");
-                            }
-                        });
-                        /***** Temporary *****/
-                    }
-                });
-
-                mDropdownDialog.setOnDismissListener(new OnDismissListener() {
-                    @Override
-                    public void onDismiss() {
-                    }
-                });
-                mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
-            }
-        });
+        sourceSwitchButton.setOnDropdownButtonClickEventListener(mSourceButtonClickListener);
     }
 
     private void setupMediaButtons(View parentView) {
@@ -396,6 +320,9 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
         mShuffleButton.setImages(new int[]{R.drawable.psa_media_button_icon_shuffle_on,
                 R.drawable.psa_media_button_icon_shuffle_on});
+
+        mShuffleButton.setListener(mShuffleButtonClickListener);
+        mRepeatButton.setListener(mRepeatButtonClickListener);
     }
 
     @Override
@@ -415,7 +342,8 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     @Override
     public void onResume() {
         super.onResume();
-        mMediaPlaybackModel.start();
+        onMetadataChanged(mMediaPlaybackModel.getMetadata());
+        onQueueChanged(mMediaPlaybackModel.getQueue());
         onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
         // Note: at registration, TelephonyManager will invoke the callback with the current state.
         mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
@@ -541,7 +469,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         }
 
         showMediaPlaybackControlsView();
-        mCurrentTrack = metadata.getDescription();
+        mCurrentTrackMetadata = metadata;
         Bitmap icon = getMetadataBitmap(metadata);
         if (!mShowingMessage) {
             mHandler.removeCallbacks(mSetTitleRunnable);
@@ -588,8 +516,9 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
             setBackgroundColor(mMediaPlaybackModel.getPrimaryColorDark());
         }
 
-        int durationTime = (int) metadata.getLong(MediaMetadata.METADATA_KEY_DURATION);
-        mSeekBar.setMax(durationTime);
+        long durationTime = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION);
+        int secs = (int) TimeUnit.MILLISECONDS.toSeconds(durationTime);
+        mSeekBar.setMax(secs);
         mDurationView.setText(convertMstoMinSec(durationTime));
     }
 
@@ -699,11 +628,24 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         if (extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, -1) != -1) {
             //SHUFFLE
             mShuffleButton.setListener(mShuffleButtonClickListener);
-            mShuffleButton.setPosition(extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState));
+            int shuffleState = extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState);
+            if (shuffleState == -1){
+                mShuffleButton.setEnabled(false);
+            }else{
+                mShuffleButton.setEnabled(true);
+                mShuffleButton.setPosition(shuffleState);
+            }
         } else if (extras.getInt(MediaConstants.ACTION_REPEAT_STATE, -1) != -1) {
             //REPEAT
             mRepeatButton.setListener(mRepeatButtonClickListener);
-            mRepeatButton.setPosition(extras.getInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState));
+            int repeatState = extras.getInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
+            if (repeatState == -1){
+                mRepeatButton.setEnabled(false);
+            }else{
+                mRepeatButton.setEnabled(true);
+                mRepeatButton.setPosition(repeatState);
+            }
+            
         }
     }
 
@@ -716,8 +658,6 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
      *                      {@link android.media.session.MediaSession}.
      */
     private void updateActions(long actions, List<PlaybackState.CustomAction> customActions) {
-        List<MediaSession.QueueItem> mediaQueue = mMediaPlaybackModel.getQueue();
-
         handleSlot(
                 mPrevButton, R.drawable.psa_media_button_icon_prev,
                 mMediaPlaybackModel.isSlotForActionReserved(
@@ -820,9 +760,11 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         }
         setScrimVisible(true);
         mArtistView.setVisibility(View.VISIBLE);
-        if (mCurrentTrack != null) {
-            mTitleView.setText(mCurrentTrack.getTitle());
-            mArtistView.setText(mCurrentTrack.getSubtitle());
+        if (mCurrentTrackMetadata != null) {
+            mTitleView.setText(mCurrentTrackMetadata.getString(MediaMetadata.METADATA_KEY_TITLE));
+            mArtistView.setText(mCurrentTrackMetadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
+                    + " - "
+                    + mCurrentTrackMetadata.getString(MediaMetadata.METADATA_KEY_ALBUM));
         }
         mShowingMessage = false;
     }
@@ -854,13 +796,15 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
     private Uri getMetadataIconUri(MediaMetadata metadata) {
         // Get the best Uri we can find
+        String iconUri = "";
         for (String bitmapUri : PREFERRED_URI_ORDER) {
-            String iconUri = metadata.getString(bitmapUri);
+            iconUri = metadata.getString(bitmapUri);
             if (!TextUtils.isEmpty(iconUri)) {
                 return Uri.parse(iconUri);
             }
         }
-        return null;
+        iconUri = Utils.getUriForResource(getContext(), R.drawable.psa_media_playlist_default_icon).toString();
+        return Uri.parse(iconUri);
     }
 
     /**
@@ -919,19 +863,6 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
             MediaController.TransportControls transportControls =
                     mMediaPlaybackModel.getTransportControls();
 
-            if (v.getTag() instanceof PlaybackState.CustomAction) {
-                PlaybackState.CustomAction ca = (PlaybackState.CustomAction) v.getTag();
-                checkAndDisplayFeedbackMessage(ca);
-                Bundle caExtras = ca.getExtras();
-                if (v.getId() == R.id.shuffle) {
-                    caExtras.putInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState);
-                } else if (v.getId() == R.id.repeat) {
-                    caExtras.putInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
-                }
-                transportControls.sendCustomAction(ca, ca.getExtras());
-                return;
-            }
-
             switch (v.getId()) {
                 case R.id.prev:
                     transportControls.skipToPrevious();
@@ -983,7 +914,8 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
         @Override
         public void onStopTrackingTouch(SeekBar seekBar) {
-            mMediaPlaybackModel.getTransportControls().seekTo(seekBar.getProgress());
+            mMediaPlaybackModel.getTransportControls().seekTo(
+                    TimeUnit.SECONDS.toMillis(seekBar.getProgress()));
             mMediaPlaybackModel.getTransportControls().play();
         }
 
@@ -994,11 +926,79 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-            if (fromUser) {
-                mMediaPlaybackModel.getTransportControls().seekTo(progress);
-            }
-            setProgress(progress);
+            long mills = TimeUnit.SECONDS.toMillis(progress);
+            setProgress(mills);
         }
+    };
+
+    private final OnDropdownButtonClickEventListener mSourceButtonClickListener = new OnDropdownButtonClickEventListener() {
+        @Override
+        public void onClick(DropdownButton view) {
+            DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
+                    getActivity().getTheme()));
+            DropdownDialog.setDefaultTextColor(Color.BLACK);
+
+            mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.VERTICAL);
+            mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
+                    getActivity().getTheme()));
+            mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
+
+            // TODO refresh sources list
+            int[] i = {0};
+            mSourceIconMap.entrySet().stream().forEach(e -> {
+                mDropdownDialog.addDropdownItem(new DropdownItem(++(i[0]), e.getKey() + " source", e.getValue()));
+            });
+
+            //Set listener for action item clicked
+            mDropdownDialog.setOnActionItemClickListener(mDropDowmItemClickListener);
+
+            mDropdownDialog.setOnDismissListener(new OnDismissListener() {
+                @Override
+                public void onDismiss() {
+                }
+            });
+            mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
+        }
+
+        private final OnDropdownItemClickListener mDropDowmItemClickListener = new OnDropdownItemClickListener() {
+            @Override
+            public void onItemClick(DropdownItem item) {
+                //here we can filter which action item was clicked with pos or actionId parameter
+                String title = item.getTitle();
+                PSAToast.makeText(getContext(), title + " selected", Toast.LENGTH_SHORT).show();
+                if (!item.isSticky()) {
+                    mDropdownDialog.removeDropdownItem(item);
+                }
+                mSourceId = item.getItemId();
+                ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
+                        ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), getActivity().getTheme()));
+
+                /***** Temporary *****/
+                mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {
+                });
+                mMediaPlaybackModel.getMediaBrowser().subscribe("/system/media/audio/ringtones%", new MediaBrowser.SubscriptionCallback() {
+                    @Override
+                    public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
+                        Log.d(TAG, "onChildrenLoaded " + parentId);
+                        if (children.size() > 0) {
+                            MediaBrowser.MediaItem item = children.get(0);
+
+                            MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+                            if (controls != null) {
+                                controls.pause();
+                                controls.playFromMediaId(item.getMediaId(), item.getDescription().getExtras());
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onError(String parentId) {
+                        Log.e(TAG, "Error loading children of: /system/media/audio/ringtones%");
+                    }
+                });
+                /***** Temporary *****/
+            }
+        };
     };
 
     private final OnCycleChangeListener mShuffleButtonClickListener = new OnCycleChangeListener() {
@@ -1021,7 +1021,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
                     mShuffleButton.setColorFilter(colorAccent, PorterDuff.Mode.SRC_ATOP);
                     break;
             }
-            mControlsClickListener.onClick(mShuffleButton);
+            mMediaPlaybackModel.setShuffleState(mShuffleState);
         }
     };
 
@@ -1046,7 +1046,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
                     mRepeatButton.setColorFilter(colorAccent, PorterDuff.Mode.SRC_ATOP);
                     break;
             }
-            mControlsClickListener.onClick(mRepeatButton);
+            mMediaPlaybackModel.setRepeatState(mRepeatState);
         }
     };
 
@@ -1103,20 +1103,25 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     };
 
     private final Runnable mSetTitleRunnable = () -> {
-        mTitleView.setText(mCurrentTrack.getTitle());
-        mArtistView.setText(mCurrentTrack.getSubtitle());
+        mTitleView.setText(mCurrentTrackMetadata.getString(MediaMetadata.METADATA_KEY_TITLE));
+        mArtistView.setText(mCurrentTrackMetadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
+                + " - "
+                + mCurrentTrackMetadata.getString(MediaMetadata.METADATA_KEY_ALBUM));
     };
 
-    private String convertMstoMinSec(int millisecs) {
+    private String convertMstoMinSec(long millisecs) {
         return String.format("%d:%d",
                 TimeUnit.MILLISECONDS.toMinutes(millisecs),
                 TimeUnit.MILLISECONDS.toSeconds(millisecs) -
                         TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millisecs))
         );
-    };
+    }
 
-    private void setProgress(int progress) {
-        mSeekBar.setProgress(progress);
+    ;
+
+    private void setProgress(long progress) {
+        int secs = (int) TimeUnit.MILLISECONDS.toSeconds(progress);
+        mSeekBar.setProgress(secs);
         mCurrentTimeView.setText(convertMstoMinSec(progress));
     }
 

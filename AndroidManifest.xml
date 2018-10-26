@@ -25,7 +25,8 @@
     <application
         android:icon="@drawable/ic_music"
         android:label="CarMediaApp"
-        android:theme="@style/PSAAppNightTheme">
+        android:theme="@style/PSAAppNightTheme"
+        android:largeHeap="true">
 
         <meta-data
             android:name="android.car.application"

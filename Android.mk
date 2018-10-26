@@ -35,8 +35,7 @@ LOCAL_PRIVILEGED_MODULE := true
 LOCAL_STATIC_JAVA_LIBRARIES += android-support-v4
 LOCAL_STATIC_ANDROID_LIBRARIES := android-support-v4
 
-LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res \
-        prebuilts/sdk/current/extras/constraint-layout/res
+LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res 
 		
 # Include support-v7-appcompat, if not already included
 ifeq (,$(findstring android-support-v7-appcompat,$(LOCAL_STATIC_JAVA_LIBRARIES)))
@@ -48,13 +47,6 @@ LOCAL_STATIC_JAVA_LIBRARIES += android-support-v7-appcompat
 LOCAL_STATIC_JAVA_LIBRARIES += android-support-design
 endif
 
-# Include widget, if not already included
-#ifeq (,$(findstring widgets,$(LOCAL_STATIC_JAVA_AAR_LIBRARIES)))
-LOCAL_STATIC_JAVA_AAR_LIBRARIES := widgets
-LOCAL_AAPT_FLAGS += --auto-add-overlay \
-					--extra-packages com.harman.psa.widget
-#endif
-
 LOCAL_PROGUARD_ENABLED := disabled
 
 LOCAL_DEX_PREOPT := false
@@ -62,15 +54,8 @@ LOCAL_DEX_PREOPT := false
 include packages/apps/Car/libs/car-stream-ui-lib/car-stream-ui-lib.mk
 include packages/apps/Car/libs/car-apps-common/car-apps-common.mk
 include packages/services/Car/car-support-lib/car-support.mk
-
+include vendor/harman/packages/apps/libs/car-widget-psa/widget/src/main/car-psa-widget-lib.mk
 include $(BUILD_PACKAGE)
-
-include $(CLEAR_VARS)
-
-BUILD_PSA_LIB := true
-LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES := widgets:libs/widgets.aar
-
-include $(BUILD_MULTI_PREBUILT)
 
 endif
 

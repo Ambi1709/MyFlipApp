@@ -61,61 +61,96 @@ public class MediaPlaybackModel {
     private ComponentName mCurrentComponentName;
     private Resources mPackageResources;
 
+    private MediaMetadata mCurrentTrackMetadata;
+
+    private static int mShuffleState = -1;
+    private static int mRepeatState = -1;
+
+    PlaybackState.CustomAction mRepeatAction;
+    PlaybackState.CustomAction mShuffleAction;
+
     /**
      * This is the interface to listen to {@link MediaPlaybackModel} callbacks. All callbacks are
      * done in the main thread.
      */
     public interface Listener {
-        /** Indicates active media app has changed. A new mediaBrowser is now connecting to the new
-          * app and mediaController has been released, pending connection to new service.
-          */
+        /**
+         * Indicates active media app has changed. A new mediaBrowser is now connecting to the new
+         * app and mediaController has been released, pending connection to new service.
+         */
         void onMediaAppChanged(@Nullable ComponentName currentName,
                                @Nullable ComponentName newName);
+
         void onMediaAppStatusMessageChanged(@Nullable String message);
 
         /**
          * Indicates the mediaBrowser is not connected and mediaController is available.
          */
         void onMediaConnected();
+
         /**
          * Indicates mediaBrowser connection is temporarily suspended.
-         * */
+         */
         void onMediaConnectionSuspended();
+
         /**
          * Indicates that the MediaBrowser connected failed. The mediaBrowser and controller have
          * now been released.
          */
         void onMediaConnectionFailed(CharSequence failedMediaClientName);
+
         void onPlaybackStateChanged(@Nullable PlaybackState state);
+
         void onMetadataChanged(@Nullable MediaMetadata metadata);
+
         void onQueueChanged(List<MediaSession.QueueItem> queue);
+
         /**
          * Indicates that the MediaSession was destroyed. The mediaController has been released.
          */
         void onSessionDestroyed(CharSequence destroyedMediaClientName);
     }
 
-    /** Convenient Listener base class for extension */
+    /**
+     * Convenient Listener base class for extension
+     */
     public static abstract class AbstractListener implements Listener {
         @Override
         public void onMediaAppChanged(@Nullable ComponentName currentName,
-                @Nullable ComponentName newName) {}
+                                      @Nullable ComponentName newName) {
+        }
+
         @Override
-        public void onMediaAppStatusMessageChanged(@Nullable String message) {}
+        public void onMediaAppStatusMessageChanged(@Nullable String message) {
+        }
+
         @Override
-        public void onMediaConnected() {}
+        public void onMediaConnected() {
+        }
+
         @Override
-        public void onMediaConnectionSuspended() {}
+        public void onMediaConnectionSuspended() {
+        }
+
         @Override
-        public void onMediaConnectionFailed(CharSequence failedMediaClientName) {}
+        public void onMediaConnectionFailed(CharSequence failedMediaClientName) {
+        }
+
         @Override
-        public void onPlaybackStateChanged(@Nullable PlaybackState state) {}
+        public void onPlaybackStateChanged(@Nullable PlaybackState state) {
+        }
+
         @Override
-        public void onMetadataChanged(@Nullable MediaMetadata metadata) {}
+        public void onMetadataChanged(@Nullable MediaMetadata metadata) {
+        }
+
         @Override
-        public void onQueueChanged(List<MediaSession.QueueItem> queue) {}
+        public void onQueueChanged(List<MediaSession.QueueItem> queue) {
+        }
+
         @Override
-        public void onSessionDestroyed(CharSequence destroyedMediaClientName) {}
+        public void onSessionDestroyed(CharSequence destroyedMediaClientName) {
+        }
     }
 
     public MediaPlaybackModel(Context context, Bundle browserExtras) {
@@ -205,7 +240,8 @@ public class MediaPlaybackModel {
     }
 
     @MainThread
-    public @NonNull List<MediaSession.QueueItem> getQueue() {
+    public @NonNull
+    List<MediaSession.QueueItem> getQueue() {
         Assert.isMainThread();
         if (mController == null) {
             return new ArrayList<>();
@@ -269,12 +305,49 @@ public class MediaPlaybackModel {
     }
 
     @MainThread
-    public @NonNull CharSequence getQueueTitle() {
+    public @NonNull
+    CharSequence getQueueTitle() {
         Assert.isMainThread();
         if (mController == null) {
             return "";
         }
         return mController.getQueueTitle();
+    }
+
+    public void setShuffleState(int state) {
+        if (state != mShuffleState) {
+            mShuffleState = state;
+            MediaController.TransportControls transportControls = getTransportControls();
+            if (transportControls != null && mShuffleAction != null) {
+                Bundle caExtras = mShuffleAction.getExtras();
+                caExtras.putInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState);
+                transportControls.sendCustomAction(mShuffleAction, mShuffleAction.getExtras());
+            }
+        }
+    }
+
+    public int getShuffleState() {
+        return mShuffleState;
+    }
+
+    public void setRepeatState(int state) {
+        if (state != mRepeatState) {
+            mRepeatState = state;
+            MediaController.TransportControls transportControls = getTransportControls();
+            if (transportControls != null && mRepeatAction != null) {
+                Bundle caExtras = mRepeatAction.getExtras();
+                caExtras.putInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
+                transportControls.sendCustomAction(mRepeatAction, mRepeatAction.getExtras());
+            }
+        }
+    }
+
+    public int getRepeatState() {
+        return mRepeatState;
+    }
+
+    public MediaMetadata getCurrentMetadata() {
+        return mCurrentTrackMetadata;
     }
 
     private final MediaManager.Listener mMediaManagerListener = new MediaManager.Listener() {
@@ -322,7 +395,7 @@ public class MediaPlaybackModel {
             new MediaBrowser.ConnectionCallback() {
                 @Override
                 public void onConnected() {
-                    mHandler.post(()->{
+                    mHandler.post(() -> {
                         // Existing mController has already been disconnected before we call
                         // MediaBrowser.connect()
                         // getSessionToken returns a non null token
@@ -332,6 +405,8 @@ public class MediaPlaybackModel {
                         }
                         mController = new MediaController(mContext, token);
                         mController.registerCallback(mMediaControllerCallback);
+
+                        setUpActions(getPlaybackState());
                         notifyListeners(Listener::onMediaConnected);
                     });
                 }
@@ -368,6 +443,7 @@ public class MediaPlaybackModel {
             new MediaController.Callback() {
                 @Override
                 public void onPlaybackStateChanged(final PlaybackState state) {
+                    setUpActions(state);
                     mHandler.post(() -> {
                         notifyListeners((listener) -> listener.onPlaybackStateChanged(state));
                     });
@@ -375,6 +451,7 @@ public class MediaPlaybackModel {
 
                 @Override
                 public void onMetadataChanged(final MediaMetadata metadata) {
+                    mCurrentTrackMetadata = metadata;
                     mHandler.post(() -> {
                         notifyListeners((listener) -> listener.onMetadataChanged(metadata));
                     });
@@ -408,4 +485,24 @@ public class MediaPlaybackModel {
                     });
                 }
             };
+
+
+    private void setUpActions(PlaybackState state) {
+        if (state == null) return;
+        List<PlaybackState.CustomAction> customActions = state.getCustomActions();
+
+        for (PlaybackState.CustomAction customAction : customActions) {
+            Bundle extras = customAction.getExtras();
+
+            if (extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, -1) != -1) {
+                //SHUFFLE
+                mShuffleAction = customAction;
+                mShuffleState = extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState);
+            } else if (extras.getInt(MediaConstants.ACTION_REPEAT_STATE, -1) != -1) {
+                //REPEAT
+                mRepeatAction = customAction;
+                mRepeatState = extras.getInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
+            }
+        }
+    }
 }

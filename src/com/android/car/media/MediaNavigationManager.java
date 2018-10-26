@@ -2,15 +2,15 @@ package com.android.car.media;
 
 import android.content.Context;
 import android.support.v4.app.FragmentManager;
-
-import com.android.car.radio.MainRadioFragment;
+import android.util.Log;
 
 import com.android.car.media.R;
+import com.android.car.radio.MainRadioFragment;
+
 import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
 import com.harman.psa.widget.tabview.PSATabView;
 
-import android.util.Log;
 import java.util.HashMap;
 
 public class MediaNavigationManager extends PSABaseNavigationManager implements PSATabBarManager.OnTabChangeListener {
@@ -67,9 +67,10 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
         MediaTab tab = MediaTab.values()[tabNumber];
         switch (tab) {
             case PLAYER:
-                
-            case TRACKLIST:
                 showFragment(new MediaPlaybackFragment());
+                break;
+            case TRACKLIST:
+                showFragment(new MediaPlaylistFragment());
                 break;
             case LIBRARY:
                 showFragment(new MediaBrowseFragment());
@@ -80,6 +81,7 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
                 Log.e(TAG, "Failed to show screen: unknown tab number");
         }
     }
+
 
     private void openRadioTab(int tabNumber) {
         clearBackStack();

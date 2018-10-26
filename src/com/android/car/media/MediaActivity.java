@@ -1,37 +1,26 @@
 package com.android.car.media;
 
-import android.os.Bundle;
-import android.os.IBinder;
-import android.support.annotation.Nullable;
-import android.widget.Toast;
-import android.util.Log;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
 import android.content.SharedPreferences;
+import android.media.session.MediaController;
+import android.os.Bundle;
 import android.provider.MediaStore;
-
+import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Toast;
 
-import android.media.AudioAttributes;
-import android.media.session.MediaController;
-import android.car.Car;
-import android.car.CarNotConnectedException;
-import android.car.media.CarAudioManager;
-
+import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseActivity;
 import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
-import com.harman.psa.widget.tabview.PSATabView;
 import com.harman.psa.widget.toast.PSAToast;
-import com.harman.psa.widget.PSAAppBarButton;
 
 
-public class MediaActivity extends PSABaseActivity
-        implements MediaPlaybackFragment.PlayQueueRevealer {
+public class MediaActivity extends PSABaseActivity {
     private static final String TAG = "MediaPlayerActivity";
 
     private static final String ACTION_MEDIA_APP_STATE_CHANGE
@@ -89,10 +78,12 @@ public class MediaActivity extends PSABaseActivity
         mNavigationManager.formMediaTabBar(tabManager, this);
         mNavigationManager.showActiveApp();
 
-        mMediaPlaybackModel = new MediaPlaybackModel(MediaActivity.this, null /* browserExtras */);
+        if (mMediaPlaybackModel == null) {
+            mMediaPlaybackModel = new MediaPlaybackModel(MediaActivity.this, null /* browserExtras */);
+        }
         mMediaPlaybackModel.start();
 
-        if (mActiveApp == MediaConstants.MEDIA_APP){
+        if (mActiveApp == MediaConstants.MEDIA_APP) {
             Intent i = new Intent(ACTION_MEDIA_APP_STATE_CHANGE);
             i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, true);
             sendBroadcast(i);
@@ -106,7 +97,7 @@ public class MediaActivity extends PSABaseActivity
         /* Keep last active app */
         mSharedPrefs.edit().putInt(LAST_ACTIVE_APP, mActiveApp).commit();
 
-        if (mActiveApp == MediaConstants.MEDIA_APP){
+        if (mActiveApp == MediaConstants.MEDIA_APP) {
             Intent i = new Intent(ACTION_MEDIA_APP_STATE_CHANGE);
             i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, false);
             sendBroadcast(i);
@@ -130,9 +121,9 @@ public class MediaActivity extends PSABaseActivity
         burgerButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (getTabBarManager().isTabBarVisible()){
+                if (getTabBarManager().isTabBarVisible()) {
                     getTabBarManager().hideTabBar();
-                }else{
+                } else {
                     getTabBarManager().showTabBar();
                 }
             }
@@ -224,23 +215,22 @@ public class MediaActivity extends PSABaseActivity
         return mNavigationManager;
     }
 
-    protected void switchApp(){
-        if (mActiveApp == MediaConstants.MEDIA_APP){
+    protected void switchApp() {
+        if (mActiveApp == MediaConstants.MEDIA_APP) {
             mActiveApp = MediaConstants.RADIO_APP;
             //Pause playback
             MediaController.TransportControls transportControls =
                     mMediaPlaybackModel.getTransportControls();
             transportControls.pause();
             mMediaPlaybackModel.stop();
-            // Send the broadcast to let the current connected media app know it is disconnected now.
-            sendMediaConnectionStatusBroadcast(
-                    MediaManager.getInstance(this).getCurrentComponent(),
-                    MediaConstants.MEDIA_DISCONNECTED);
             MediaManager.getInstance(this).removeListener(mListener);
-        }else{
+        } else {
             mActiveApp = MediaConstants.MEDIA_APP;
             MediaManager.getInstance(this).addListener(mListener);
             mMediaPlaybackModel.start();
+            sendMediaConnectionStatusBroadcast(
+                    MediaManager.getInstance(this).getCurrentComponent(),
+                    MediaConstants.MEDIA_CONNECTED);
         }
         mNavigationManager.setActiveApp(mActiveApp);
         mNavigationManager.formMediaTabBar(getTabBarManager(), this);
@@ -304,19 +294,17 @@ public class MediaActivity extends PSABaseActivity
         sendBroadcast(intent);
     }
 
-    @Override
-    public void showPlayQueue() {
-        // mDrawerController.showPlayQueue();
-    }
-
-
-    private void setAppBarButtonsForActiveApp(){
-        if (mActiveApp == MediaConstants.RADIO_APP){
+    private void setAppBarButtonsForActiveApp() {
+        if (mActiveApp == MediaConstants.RADIO_APP) {
             mAppSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_2, mMediaSwitchButton);
-        }else{
+        } else {
             mAppSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_2, mRadioSwitchButton);
         }
         getAppBarView().replaceAppBarButton(mAppSwitchButton);
+    }
+
+    public MediaPlaybackModel getPlaybackModel() {
+        return mMediaPlaybackModel;
     }
 
 }
