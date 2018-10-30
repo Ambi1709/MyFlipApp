@@ -15,4 +15,11 @@
     <string name="player_radio_tab">PLAYER</string>
     <string name="station_list_radio_tab">STATION LIST</string>
     <string name="favourites_radio_tab">FAVOURITES</string>
+
+    <!-- Library labels -->
+    <string name="library_category_artists">ARTISTS</string>
+    <string name="library_category_playlists">PLAYLISTS</string>
+    <string name="library_category_albums">ALBUMS</string>
+    <string name="library_category_genres">GENRES</string>
+    <string name="library_category_folders">FOLDERS</string>
 </resources>
