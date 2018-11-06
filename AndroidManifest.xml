@@ -26,7 +26,9 @@
         android:icon="@drawable/ic_music"
         android:label="CarMediaApp"
         android:theme="@style/PSAAppNightTheme"
-        android:largeHeap="true">
+        android:largeHeap="true"
+        android:name="com.android.car.PSACarMediaApp"
+        android:persistent="true">
 
         <meta-data
             android:name="android.car.application"
@@ -49,6 +51,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <service android:name="com.android.car.usb.PSAUsbStateService" />
     </application>
 </manifest>
 

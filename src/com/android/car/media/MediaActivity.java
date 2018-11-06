@@ -1,11 +1,10 @@
 package com.android.car.media;
 
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
+import android.content.*;
 import android.media.session.MediaController;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.os.storage.DiskInfo;
 import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -13,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Toast;
 
+import com.android.car.usb.PSAUsbStateService;
 import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseActivity;
 import com.harman.psa.widget.PSABaseNavigationManager;
@@ -20,7 +20,7 @@ import com.harman.psa.widget.PSATabBarManager;
 import com.harman.psa.widget.toast.PSAToast;
 
 
-public class MediaActivity extends PSABaseActivity {
+public class MediaActivity extends PSABaseActivity implements PSAUsbStateService.OnUsbStateListener {
     private static final String TAG = "MediaPlayerActivity";
 
     private static final String ACTION_MEDIA_APP_STATE_CHANGE
@@ -47,6 +47,27 @@ public class MediaActivity extends PSABaseActivity {
     private PSAAppBarButton mAppSwitchButton;
     private View mRadioSwitchButton;
     private View mMediaSwitchButton;
+
+    private PSAUsbStateService mUsbNotificationService;
+
+    private boolean mIsServiceBound;
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            PSAUsbStateService.UsbStateServiceBinder binder = (PSAUsbStateService.UsbStateServiceBinder) service;
+            mUsbNotificationService = binder.getService();
+            mIsServiceBound = true;
+            mUsbNotificationService.setOnUsbStateListener(MediaActivity.this);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mIsServiceBound = false;
+        }
+    };
+
 
     private final MediaManager.Listener mListener = new MediaManager.Listener() {
         @Override
@@ -88,6 +109,9 @@ public class MediaActivity extends PSABaseActivity {
             i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, true);
             sendBroadcast(i);
         }
+
+        Intent intent = new Intent(this, PSAUsbStateService.class);
+        bindService(intent, mConnection, BIND_AUTO_CREATE);
     }
 
     @Override
@@ -102,6 +126,22 @@ public class MediaActivity extends PSABaseActivity {
             i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, false);
             sendBroadcast(i);
         }
+
+        if (mIsServiceBound) {
+            mUsbNotificationService.setOnUsbStateListener(null);
+            unbindService(mConnection);
+            mIsServiceBound = false;
+        }
+    }
+
+    @Override
+    public void onUsbDiskMounted(DiskInfo diskInfo) {
+
+    }
+
+    @Override
+    public void onUsbDiskUnmounted(DiskInfo diskInfo) {
+
     }
 
     @Override

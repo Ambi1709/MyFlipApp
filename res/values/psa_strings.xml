@@ -17,4 +17,7 @@
     <string name="favourites_radio_tab">FAVOURITES</string>
 
     <string name="various_artists">VARIOUS ARTISTS</string>
+    <!-- Notification -->
+    <string name="psa_general_notification_title">Media Center</string>
+    <string name="psa_general_notification_content">%1$s storage is now available in Media Center. Tap to play</string>
 </resources>
