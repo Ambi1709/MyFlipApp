@@ -267,16 +267,16 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         mShuffleState = mMediaPlaybackModel.getShuffleState();
         mRepeatState = mMediaPlaybackModel.getRepeatState();
 
-        if(mShuffleState == -1){
+        if (mShuffleState == -1) {
             mShuffleButton.setEnabled(false);
-        }else{
+        } else {
             mShuffleButton.setEnabled(true);
             mShuffleButton.setPosition(mShuffleState);
         }
 
-        if(mRepeatState == -1){
+        if (mRepeatState == -1) {
             mRepeatButton.setEnabled(false);
-        }else{
+        } else {
             mRepeatButton.setEnabled(true);
             mRepeatButton.setPosition(mRepeatState);
         }
@@ -629,9 +629,9 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
             //SHUFFLE
             mShuffleButton.setListener(mShuffleButtonClickListener);
             int shuffleState = extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState);
-            if (shuffleState == -1){
+            if (shuffleState == -1) {
                 mShuffleButton.setEnabled(false);
-            }else{
+            } else {
                 mShuffleButton.setEnabled(true);
                 mShuffleButton.setPosition(shuffleState);
             }
@@ -639,13 +639,13 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
             //REPEAT
             mRepeatButton.setListener(mRepeatButtonClickListener);
             int repeatState = extras.getInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
-            if (repeatState == -1){
+            if (repeatState == -1) {
                 mRepeatButton.setEnabled(false);
-            }else{
+            } else {
                 mRepeatButton.setEnabled(true);
                 mRepeatButton.setPosition(repeatState);
             }
-            
+
         }
     }
 
@@ -975,27 +975,47 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
                 /***** Temporary *****/
                 mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {
-                });
-                mMediaPlaybackModel.getMediaBrowser().subscribe("/system/media/audio/ringtones%", new MediaBrowser.SubscriptionCallback() {
                     @Override
                     public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
                         Log.d(TAG, "onChildrenLoaded " + parentId);
                         if (children.size() > 0) {
-                            MediaBrowser.MediaItem item = children.get(0);
-
-                            MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-                            if (controls != null) {
-                                controls.pause();
-                                controls.playFromMediaId(item.getMediaId(), item.getDescription().getExtras());
+                            MediaBrowser.MediaItem itemM = children.get(0);
+                            for (MediaBrowser.MediaItem item : children) {
+                                itemM = item;
+                                if (item.getDescription().getTitle().equals("music")) {
+                                    break;
+                                }
                             }
+
+                            mMediaPlaybackModel.getMediaBrowser().subscribe(itemM.getMediaId(), new MediaBrowser.SubscriptionCallback() {
+                                @Override
+                                public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
+                                    Log.d(TAG, "onChildrenLoaded " + parentId);
+                                    if (children.size() > 0) {
+                                        MediaBrowser.MediaItem itemM = children.get(0);
+
+                                        MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+                                        if (controls != null) {
+                                            controls.pause();
+                                            controls.playFromMediaId(itemM.getMediaId(), itemM.getDescription().getExtras());
+                                        }
+                                    }
+                                }
+
+                                @Override
+                                public void onError(String parentId) {
+                                    Log.e(TAG, "Error loading children of " + parentId);
+                                }
+                            });
                         }
                     }
 
                     @Override
                     public void onError(String parentId) {
-                        Log.e(TAG, "Error loading children of: /system/media/audio/ringtones%");
+                        Log.e(TAG, "Error loading children of " + parentId);
                     }
                 });
+
                 /***** Temporary *****/
             }
         };
