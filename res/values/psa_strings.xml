@@ -15,4 +15,6 @@
     <string name="player_radio_tab">PLAYER</string>
     <string name="station_list_radio_tab">STATION LIST</string>
     <string name="favourites_radio_tab">FAVOURITES</string>
+
+    <string name="various_artists">VARIOUS ARTISTS</string>
 </resources>

@@ -1,6 +1,10 @@
 package com.android.car.media;
 
+import android.graphics.Color;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,7 +15,14 @@ import com.android.car.media.LibraryGridListAdapter;
 import com.android.car.media.MediaLibraryController;
 import com.android.car.media.MediaLibraryFragment;
 import com.android.car.media.MediaPlaybackModel;
+import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseFragment;
+import com.harman.psa.widget.dropdowns.DropdownButton;
+import com.harman.psa.widget.dropdowns.DropdownDialog;
+import com.harman.psa.widget.dropdowns.DropdownHelper;
+import com.harman.psa.widget.dropdowns.DropdownItem;
+import com.harman.psa.widget.dropdowns.listener.OnDismissListener;
+import com.harman.psa.widget.dropdowns.listener.OnDropdownButtonClickEventListener;
 import com.harman.psa.widget.verticallist.model.ItemData;
 
 import java.util.ArrayList;
@@ -27,6 +38,8 @@ public class MediaBrowseFragment extends PSABaseFragment implements
 
     private MediaPlaybackModel mMediaPlaybackModel;
     private MediaLibraryController mMediaLibraryController;
+
+    private PSAAppBarButton mUsbSwitchButton;
 
     private String mRootId = "";
 
@@ -59,11 +72,54 @@ public class MediaBrowseFragment extends PSABaseFragment implements
     }
 
     @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        DropdownButton usbSwitchButton = (DropdownButton) LayoutInflater.from(getContext()).inflate(
+                R.layout.psa_view_usb_switch_button,
+                getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_3),
+                false);
+        mUsbSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_3, usbSwitchButton);
+        getAppBarView().replaceAppBarButton(mUsbSwitchButton);
+        usbSwitchButton.setOnDropdownButtonClickEventListener(mUsbButtonClickListener);
+    }
+
+    private final OnDropdownButtonClickEventListener mUsbButtonClickListener = new OnDropdownButtonClickEventListener() {
+        @Override
+        public void onClick(DropdownButton view) {
+            DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
+                    getActivity().getTheme()));
+            DropdownDialog.setDefaultTextColor(Color.BLACK);
+
+            DropdownDialog mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.HORIZONTAL, DropdownHelper.ItemType.ICON);
+            mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
+                    getActivity().getTheme()));
+            mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
+
+            mDropdownDialog.addDropdownItem(new DropdownItem(1, "", R.drawable.psa_media_source_usb1, DropdownHelper.ItemType.ICON));
+            mDropdownDialog.addDropdownItem(new DropdownItem(2, "", R.drawable.psa_media_source_usb2, DropdownHelper.ItemType.ICON));
+
+            mDropdownDialog.setOnDismissListener(new OnDismissListener() {
+                @Override
+                public void onDismiss() {
+                }
+            });
+            mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
+        }
+    };
+
+    @Override
     public void onItemClicked(LibraryCategoryGridItemData data) {
-        if (data.getItemId().equals("__ALBUMS__")) {
+        mMediaLibraryController.saveRootCategory(data.getItemId());
+        if (data.getItemId().equals(MediaLibraryController.ALBUMS_ID)) {
             getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(mMediaLibraryController,
                     data.getItemId(),
-                    data.getPrimaryText(), MediaLibraryFragment.FRAGMENT_TYPE_GRID));
+                    data.getPrimaryText(), null, MediaLibraryFragment.FRAGMENT_TYPE_GRID,
+                    data.getItemId()));
+        } else {
+            getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(mMediaLibraryController,
+                    data.getItemId(),
+                    data.getPrimaryText(), null, MediaLibraryFragment.FRAGMENT_TYPE_LIST,
+                    data.getItemId()));
         }
     }
 
@@ -73,7 +129,7 @@ public class MediaBrowseFragment extends PSABaseFragment implements
         mAdapter.notifyDataSetChanged();
     }
 
-    public void onItemsUpdated(List<ItemData> result) {
+    public void onItemsUpdated(List<ItemData> result, boolean showSections) {
         // no use
         return;
     }

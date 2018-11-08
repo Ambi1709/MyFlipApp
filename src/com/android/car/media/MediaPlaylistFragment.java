@@ -70,16 +70,16 @@ public class MediaPlaylistFragment extends PSABaseFragment
         mShuffleButton.setListener(mShuffleButtonClickListener);
         mRepeatButton.setListener(mRepeatButtonClickListener);
 
-        if(mShuffleState == -1){
+        if (mShuffleState == -1) {
             mShuffleButton.setEnabled(false);
-        }else{
+        } else {
             mShuffleButton.setEnabled(true);
             mShuffleButton.setPosition(mShuffleState);
         }
 
-        if(mRepeatState == -1){
+        if (mRepeatState == -1) {
             mRepeatButton.setEnabled(false);
-        }else{
+        } else {
             mRepeatButton.setEnabled(true);
             mRepeatButton.setPosition(mRepeatState);
         }
@@ -212,6 +212,8 @@ public class MediaPlaylistFragment extends PSABaseFragment
         MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
         if (controls != null) {
             controls.pause();
+            Bundle extras = new Bundle();
+            extras.putBoolean(MediaPlaybackModel.PLAYLIST_PLAYING_KEY, true);
             controls.playFromMediaId(itemValue.getId(), null);
         }
     }

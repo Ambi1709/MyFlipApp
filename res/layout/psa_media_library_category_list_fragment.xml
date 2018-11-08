@@ -1,41 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="144px"
-        android:background="@color/psa_general_day_major_color1"
-        android:orientation="horizontal">
+        android:layout_height="128px"
+        android:background="?attr/psa_general_background_color2">
 
         <ImageButton
             android:id="@+id/back_button"
-            android:layout_width="144px"
-            android:layout_height="144px"
+            android:layout_width="160px"
+            android:layout_height="128px"
+            android:layout_alignParentStart="true"
+            android:background="@color/psa_transparent_color"
             android:src="@drawable/psa_general_back_image" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
+            android:layout_centerInParent="true"
+            android:layout_toRightOf="@id/back_button"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/category_title"
+                style="@style/PsaTextContentPrimary2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal" />
+                android:layout_gravity="start"
+                android:textColor="?attr/psa_general_major_color1" />
 
             <TextView
                 android:id="@+id/category_subtitle"
+                style="@style/PsaTextContentSecondary2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
+                android:layout_gravity="start"
+                android:textColor="?attr/psa_general_content_color2"
                 android:visibility="gone" />
         </LinearLayout>
-
-    </LinearLayout>
+    </RelativeLayout>
     <!--     <com.harman.psa.widget.verticallist.PsaHeaderListGroup
         android:id="@+id/header"
         android:layout_width="match_parent"

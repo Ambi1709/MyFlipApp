@@ -48,6 +48,8 @@ import java.util.function.Consumer;
 public class MediaPlaybackModel {
     private static final String TAG = "MediaPlaybackModel";
 
+    public static final String PLAYLIST_PLAYING_KEY = "playlist";
+
     private final Context mContext;
     private final Bundle mBrowserExtras;
     private final List<MediaPlaybackModel.Listener> mListeners = new LinkedList<>();
