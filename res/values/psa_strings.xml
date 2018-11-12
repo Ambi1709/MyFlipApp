@@ -20,4 +20,10 @@
     <!-- Notification -->
     <string name="psa_general_notification_title">Media Center</string>
     <string name="psa_general_notification_content">%1$s storage is now available in Media Center. Tap to play</string>
+
+    <string name="library_item_play">Play This Item</string>
+    <string name="library_item_play_next">Play Next</string>
+    <string name="library_item_play_later">Play Later</string>
+    <string name="library_item_play_shuffle">Shuffle Play</string>
+    <string name="library_category_play_shuffle">Shuffle Play All Items</string>
 </resources>

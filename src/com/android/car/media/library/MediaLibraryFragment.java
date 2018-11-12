@@ -19,6 +19,7 @@ import com.harman.psa.widget.verticallist.model.ItemData;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.TreeSet;
 
 
 public class MediaLibraryFragment extends PSABaseFragment implements
@@ -28,11 +29,13 @@ public class MediaLibraryFragment extends PSABaseFragment implements
 
     private static final String TAG = "MediaLibraryFragment";
 
-    private static final String LIST_HEADER_KEY = "header";
-    private static final String LIST_SUBTITLE_KEY = "subtitle";
-    private static final String FRAGMENT_TYPE_KEY = "fragment_type";
-    private static final String MEDIA_ID_KEY = "media_id";
-    private static final String ROOT_CATEGORY_ID_KEY = "root_category_id";
+    public static final String LIST_HEADER_KEY = "header";
+    public static final String LIST_SUBTITLE_KEY = "subtitle";
+    public static final String FRAGMENT_TYPE_KEY = "fragment_type";
+    public static final String MEDIA_ID_KEY = "media_id";
+    public static final String ROOT_CATEGORY_ID_KEY = "root_category_id";
+    public static final String PLAY_SHUFFLE_ACTION_AVAILABILITY_KEY = "play_shuffle_action_available";
+    public static final String PLAY_SHUFFLE_ACTION_TEXT_KEY = "play_shuffle_action_text";
 
     public static final String FRAGMENT_TYPE_GRID = "grid";
     public static final String FRAGMENT_TYPE_LIST = "list";
@@ -51,25 +54,16 @@ public class MediaLibraryFragment extends PSABaseFragment implements
     private LibraryCategoryVerticalListAdapter mListAdapter;
 
     private TextView mSubtitleView;
+    private ItemData mShuffleActionItemData;
 
     private MediaLibraryFragment(MediaLibraryController controller) {
         mLibraryController = controller;
     }
 
     public static MediaLibraryFragment newCategoryInstance(MediaLibraryController controller,
-                                                           String mediaId,
-                                                           String header,
-                                                           @Nullable String subtitle,
-                                                           String fragment_type,
-                                                           @NonNull String rootCategoryId) {
+                                                           Bundle extras) {
         MediaLibraryFragment fragment = new MediaLibraryFragment(controller);
-        Bundle params = new Bundle();
-        params.putString(LIST_HEADER_KEY, header);
-        params.putString(LIST_SUBTITLE_KEY, subtitle);
-        params.putString(FRAGMENT_TYPE_KEY, fragment_type);
-        params.putString(MEDIA_ID_KEY, mediaId);
-        params.putString(ROOT_CATEGORY_ID_KEY, rootCategoryId);
-        fragment.setArguments(params);
+        fragment.setArguments(extras);
         return fragment;
     }
 
@@ -97,6 +91,9 @@ public class MediaLibraryFragment extends PSABaseFragment implements
     public void onStop() {
         super.onStop();
         mLibraryController.removeListener(this);
+        if (mListAdapter != null) {
+            mListAdapter.dismissDialog();
+        }
     }
 
     @Override
@@ -137,6 +134,21 @@ public class MediaLibraryFragment extends PSABaseFragment implements
     }
 
     public void setUpVerticalListView(View v) {
+        if (getArguments().getBoolean(PLAY_SHUFFLE_ACTION_AVAILABILITY_KEY) == true && mShuffleActionItemData == null) {
+            // set up shuffle play action (for categories)
+            String shuffleActionText = getArguments().getString(PLAY_SHUFFLE_ACTION_TEXT_KEY);
+            Bundle extras = new Bundle();
+            extras.putInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY, MediaBrowser.MediaItem.FLAG_BROWSABLE);
+            mShuffleActionItemData = new ItemData.Builder()
+                    .setId(mMediaId)
+                    .setPrimaryText(shuffleActionText)
+                    .setAction1ResId(R.drawable.psa_media_button_icon_shuffle_on)
+                    .setAction1ViewType(ItemData.ACTION_VIEW_TYPE_IMAGEVIEW)
+                    .build();
+            mShuffleActionItemData.setExtras(extras);
+            mSubCategoriesList.add(mShuffleActionItemData);
+        }
+
         mRecyclerView = v.findViewById(R.id.list);
         mRecyclerView.setHasFixedSize(true);
         mLibraryController.getChildrenElements(mMediaId);
@@ -158,11 +170,19 @@ public class MediaLibraryFragment extends PSABaseFragment implements
         Bundle extras = data.getExtras();
         if (extras != null) {
             if (extras.getInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY) == MediaBrowser.MediaItem.FLAG_BROWSABLE) {
-                getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(mLibraryController,
-                        data.getId(),
-                        data.getPrimaryText(),
-                        data.getSecondaryText(), MediaLibraryFragment.FRAGMENT_TYPE_LIST,
-                        mRootCategoryId));
+                Bundle fragmentExtra = new Bundle();
+                if (extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false) == true) {
+                    fragmentExtra.putBoolean(PLAY_SHUFFLE_ACTION_AVAILABILITY_KEY, true);
+                    fragmentExtra.putString(PLAY_SHUFFLE_ACTION_TEXT_KEY,
+                            extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
+                                    getContext().getResources().getString(R.string.library_category_play_shuffle)));
+                }
+                fragmentExtra.putString(LIST_HEADER_KEY, data.getPrimaryText());
+                fragmentExtra.putString(LIST_SUBTITLE_KEY, data.getSecondaryText());
+                fragmentExtra.putString(FRAGMENT_TYPE_KEY, MediaLibraryFragment.FRAGMENT_TYPE_LIST);
+                fragmentExtra.putString(MEDIA_ID_KEY, data.getId());
+                fragmentExtra.putString(ROOT_CATEGORY_ID_KEY, mRootCategoryId);
+                getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(mLibraryController, fragmentExtra));
             } else {
                 mLibraryController.playMediaItem(data);
             }
@@ -171,18 +191,29 @@ public class MediaLibraryFragment extends PSABaseFragment implements
     }
 
     @Override
+    public void onActionClicked(ItemData data, int action) {
+        mLibraryController.fireAction(data, action, mRootCategoryId);
+    }
+
+    @Override
+    public void onGeneralActionClicked(ItemData data) {
+        mLibraryController.fireAction(data, MediaLibraryController.PLAY_SHUFFLE_ACTION_INDEX, mRootCategoryId);
+    }
+
+    @Override
     public void onRootItemsUpdated(List<LibraryCategoryGridItemData> result) {
         // no use
     }
 
     public void onItemsUpdated(List<ItemData> result, boolean showSections) {
-        if (mAdapter != null) {
+        if (mAdapter != null) { // grid list
             mSubCategoriesList.clear();
             mSubCategoriesList.addAll(result);
             mAdapter.notifyDataSetChanged();
         }
-        if (mListAdapter != null) {
-            if (mRootCategoryId.equals(MediaLibraryController.ALBUMS_ID)) { // various artists
+        if (mListAdapter != null) { // vertical list
+            if (mRootCategoryId.equals(MediaLibraryController.ALBUMS_ID) ||
+                    mRootCategoryId.equals(MediaLibraryController.ARTISTS_ID)) {
                 if (checkDiffSubTitles(result)) {
                     String subtitle = mLibraryController.getVariousSubtitle(getContext());
                     if (subtitle != null && mSubtitleView != null) {
@@ -192,16 +223,55 @@ public class MediaLibraryFragment extends PSABaseFragment implements
                     mListAdapter.hideSubtitles(true);
                 }
             }
-            mSubCategoriesList.clear();
-            mSubCategoriesList.addAll(result);
             ArrayList<String> keys = new ArrayList<String>();
-            keys.add(LibraryCategoryVerticalListAdapter.DEFAULT_SECTION);
-            mListAdapter.setKeysArray(keys);
             HashMap<String, List<ItemData>> map = new HashMap<>();
-            map.put(LibraryCategoryVerticalListAdapter.DEFAULT_SECTION, mSubCategoriesList);
+            if (showSections) {
+                mSubCategoriesList.clear();
+                if (mShuffleActionItemData != null) { // shuffle play action for categories
+                    mSubCategoriesList.add(mShuffleActionItemData);
+                }
+                keys.add(LibraryCategoryVerticalListAdapter.DEFAULT_SECTION);
+                map.put(LibraryCategoryVerticalListAdapter.DEFAULT_SECTION, mSubCategoriesList);
+                prepareSectionsList(result, keys, map);
+            } else {
+                mSubCategoriesList.clear();
+                if (mShuffleActionItemData != null) {
+                    mSubCategoriesList.add(mShuffleActionItemData);
+                }
+                mSubCategoriesList.addAll(result);
+                keys.add(LibraryCategoryVerticalListAdapter.DEFAULT_SECTION);
+                map.put(LibraryCategoryVerticalListAdapter.DEFAULT_SECTION, mSubCategoriesList);
+            }
+            mListAdapter.setKeysArray(keys);
             mListAdapter.setSectionsLists(map);
             mListAdapter.notifyDataSetChanged();
         }
+    }
+
+    /* Method to prepare index sections */
+    private void prepareSectionsList(List<ItemData> result,
+                                     ArrayList<String> keys, HashMap<String,
+                                    List<ItemData>> map) {
+        TreeSet<String> set = new TreeSet<>();
+        for (ItemData item : result) {
+            char index = item.getPrimaryText().charAt(0);
+            char[] indexArr = {index};
+            String indexStr = new String(indexArr);
+            set.add(indexStr);
+        }
+        keys.addAll(set);
+        for (String key : keys) {
+            if (!map.containsKey(key)) {
+                List<ItemData> indexItems = new ArrayList<>();
+                for (ItemData item : result) {
+                    if (item.getPrimaryText().charAt(0) == key.charAt(0)) {
+                        indexItems.add(item);
+                    }
+                }
+                map.put(key, indexItems);
+            }
+        }
+
     }
 
     private boolean checkDiffSubTitles(List<ItemData> items) {

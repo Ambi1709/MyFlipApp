@@ -22,7 +22,6 @@ import com.harman.psa.widget.PSABaseFragment;
 import com.harman.psa.widget.button.OnCycleChangeListener;
 import com.harman.psa.widget.button.PSACyclicButton;
 import com.harman.psa.widget.verticallist.PsaRecyclerView;
-import com.harman.psa.widget.verticallist.model.ItemData;
 
 import java.util.List;
 
@@ -101,7 +100,7 @@ public class MediaPlaylistFragment extends PSABaseFragment
         mAdapter.setContext(getHostActivity());
         mAdapter.setItemClickListener(this);
 
-        mAdapter.setItemsData(data, getActiveQueueItemId());
+        mAdapter.setItemsData(data, mMediaPlaybackModel.getActiveQueueItemId());
 
         mRecyclerView.setItemAnimator(null);
         mRecyclerView.setAdapter(mAdapter);
@@ -146,14 +145,14 @@ public class MediaPlaylistFragment extends PSABaseFragment
                 @Override
                 public void onQueueChanged(List<MediaSession.QueueItem> queue) {
                     Assert.isMainThread();
-                    mAdapter.setItemsData(queue, getActiveQueueItemId());
+                    mAdapter.setItemsData(queue, mMediaPlaybackModel.getActiveQueueItemId());
                     mAdapter.notifyDataSetChanged();
                 }
 
                 @Override
                 @TargetApi(Build.VERSION_CODES.LOLLIPOP_MR1)
                 public void onPlaybackStateChanged(@Nullable PlaybackState state) {
-                    mAdapter.setActiveQueueId(getActiveQueueItemId());
+                    mAdapter.setActiveQueueId(mMediaPlaybackModel.getActiveQueueItemId());
                 }
             };
 
@@ -207,32 +206,12 @@ public class MediaPlaylistFragment extends PSABaseFragment
         }
     };
 
-    /* Item click listener method */
-    public void onItemClick(ItemData itemValue) {
-        MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-        if (controls != null) {
-            controls.pause();
-            Bundle extras = new Bundle();
-            extras.putBoolean(MediaPlaybackModel.PLAYLIST_PLAYING_KEY, true);
-            controls.playFromMediaId(itemValue.getId(), null);
-        }
-    }
 
     public void onQueueItemClick(MediaSession.QueueItem item) {
         MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
         if (controls != null) {
             controls.skipToQueueItem(item.getQueueId());
         }
-    }
-
-    private long getActiveQueueItemId() {
-        if (mMediaPlaybackModel != null) {
-            PlaybackState playbackState = mMediaPlaybackModel.getPlaybackState();
-            if (playbackState != null) {
-                return playbackState.getActiveQueueItemId();
-            }
-        }
-        return MediaSession.QueueItem.UNKNOWN_ID;
     }
 
 }

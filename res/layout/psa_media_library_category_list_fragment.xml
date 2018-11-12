@@ -48,6 +48,12 @@
         android:layout_height="wrap_content"
         android:background="@color/psa_general_major_color1" /> -->
 
+    <com.harman.psa.widget.verticallist.items.SimpleItemView
+        android:id="@+id/shuffle_list_action"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"/>
+
     <com.harman.psa.widget.verticallist.PsaRecyclerView
         android:id="@+id/list"
         android:layout_width="match_parent"

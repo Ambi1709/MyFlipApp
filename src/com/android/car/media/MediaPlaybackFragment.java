@@ -19,6 +19,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.UserManager;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
@@ -130,6 +131,11 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     private MediaPlaybackModel mMediaPlaybackModel;
     private final Handler mHandler = new Handler();
 
+    private Context mContext;
+
+    private String mCurrentUser;
+    private TextView mProfileView;
+
     private View mScrimView;
     private float mDefaultScrimAlpha;
     private float mDarkenedScrimAlpha;
@@ -194,14 +200,19 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Context context = getContext();
+        mContext = getContext();
+
+        UserManager usrManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        mCurrentUser = usrManager.getUserName();
+
+
         mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
         mMediaPlaybackModel.addListener(this);
 
         mTelephonyManager =
-                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
 
-        Resources res = context.getResources();
+        Resources res = mContext.getResources();
         mShowTitleDelayMs = res.getInteger(R.integer.new_album_art_fade_in_duration);
         mDefaultScrimAlpha = res.getFloat(R.dimen.media_scrim_alpha);
         mDarkenedScrimAlpha = res.getFloat(R.dimen.media_scrim_darkened_alpha);
@@ -222,6 +233,9 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     public View onCreateView(LayoutInflater inflater, final ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.now_playing_screen, container, false);
+
+        mProfileView = v.findViewById(R.id.profile_name_text);
+
         mScrimView = v.findViewById(R.id.scrim);
         mAlbumArtView = v.findViewById(R.id.album_art);
         mAlbumArtView.getViewTreeObserver().addOnGlobalLayoutListener(
@@ -263,6 +277,8 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        mProfileView.setText(mCurrentUser);
 
         mShuffleState = mMediaPlaybackModel.getShuffleState();
         mRepeatState = mMediaPlaybackModel.getRepeatState();
@@ -935,12 +951,12 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         @Override
         public void onClick(DropdownButton view) {
             DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
-                    getActivity().getTheme()));
+                    mContext.getTheme()));
             DropdownDialog.setDefaultTextColor(Color.BLACK);
 
-            mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.VERTICAL);
+            mDropdownDialog = new DropdownDialog(mContext, DropdownDialog.VERTICAL);
             mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
-                    getActivity().getTheme()));
+                    mContext.getTheme()));
             mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
 
             // TODO refresh sources list
@@ -971,7 +987,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
                 }
                 mSourceId = item.getItemId();
                 ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
-                        ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), getActivity().getTheme()));
+                        ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme()));
 
                 /***** Temporary *****/
                 mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {

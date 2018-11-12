@@ -1,6 +1,7 @@
 package com.android.car.media;
 
 
+import android.content.ContentResolver;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -21,6 +22,8 @@ import java.io.IOException;
 import java.util.List;
 
 public class LibraryCategoryGridListAdapter extends RecyclerView.Adapter<LibraryCategoryGridListAdapter.ViewHolder> {
+
+    private static final String TAG = "LibraryCategoryGridListAdapter";
     /**
      * Set of specific mData
      */
@@ -136,8 +139,10 @@ public class LibraryCategoryGridListAdapter extends RecyclerView.Adapter<Library
             if (bitmap != null) {
                 Drawable bitmapDrawable = new BitmapDrawable(bitmap);
                 mView.setCoverImage(bitmapDrawable);
-                mView.setPrimaryText("");
-                mView.setSecondaryText("");
+                if (!mUri.getScheme().equals(ContentResolver.SCHEME_ANDROID_RESOURCE)) {
+                    mView.setPrimaryText("");
+                    mView.setSecondaryText("");
+                }
             }
         }
     }

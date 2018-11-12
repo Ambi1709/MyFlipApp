@@ -48,6 +48,14 @@ public class MediaBrowseFragment extends PSABaseFragment implements
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
+        mMediaLibraryController = new MediaLibraryController(mMediaPlaybackModel, this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mMediaLibraryController.removeListener(this);
     }
 
     @Override
@@ -58,14 +66,11 @@ public class MediaBrowseFragment extends PSABaseFragment implements
         mRecyclerView = v.findViewById(R.id.library_grid);
         mRecyclerView.setHasFixedSize(true);
 
-        mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
-        mMediaLibraryController = new MediaLibraryController(mMediaPlaybackModel, this);
-
-        mMediaLibraryController.updateRootElements();
-
         mAdapter = new LibraryGridListAdapter(mCategoriesList, this);
 
         mRecyclerView.setAdapter(mAdapter);
+
+        mMediaLibraryController.updateRootElements();
 
 
         return v;
@@ -110,16 +115,28 @@ public class MediaBrowseFragment extends PSABaseFragment implements
     @Override
     public void onItemClicked(LibraryCategoryGridItemData data) {
         mMediaLibraryController.saveRootCategory(data.getItemId());
+        Bundle fragmentExtra = new Bundle();
+        fragmentExtra.putString(MediaLibraryFragment.LIST_HEADER_KEY, data.getPrimaryText());
+        fragmentExtra.putString(MediaLibraryFragment.LIST_SUBTITLE_KEY, null);
+        fragmentExtra.putString(MediaLibraryFragment.MEDIA_ID_KEY, data.getItemId());
+        fragmentExtra.putString(MediaLibraryFragment.ROOT_CATEGORY_ID_KEY, data.getItemId());
         if (data.getItemId().equals(MediaLibraryController.ALBUMS_ID)) {
-            getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(mMediaLibraryController,
-                    data.getItemId(),
-                    data.getPrimaryText(), null, MediaLibraryFragment.FRAGMENT_TYPE_GRID,
-                    data.getItemId()));
+            fragmentExtra.putString(MediaLibraryFragment.FRAGMENT_TYPE_KEY, MediaLibraryFragment.FRAGMENT_TYPE_GRID);
+            getNavigationManager().showFragment(
+                    MediaLibraryFragment.newCategoryInstance(mMediaLibraryController, fragmentExtra));
         } else {
-            getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(mMediaLibraryController,
-                    data.getItemId(),
-                    data.getPrimaryText(), null, MediaLibraryFragment.FRAGMENT_TYPE_LIST,
-                    data.getItemId()));
+            if (data.getItemId().equals(MediaLibraryController.ARTISTS_ID)) {
+                Bundle extras = data.getExtras();
+                if (extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false) == true) {
+                    fragmentExtra.putBoolean(MediaLibraryFragment.PLAY_SHUFFLE_ACTION_AVAILABILITY_KEY, true);
+                    fragmentExtra.putString(MediaLibraryFragment.PLAY_SHUFFLE_ACTION_TEXT_KEY,
+                            extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
+                                    getContext().getResources().getString(R.string.library_category_play_shuffle)));
+                }
+            }
+            fragmentExtra.putString(MediaLibraryFragment.FRAGMENT_TYPE_KEY, MediaLibraryFragment.FRAGMENT_TYPE_LIST);
+            getNavigationManager().showFragment(
+                    MediaLibraryFragment.newCategoryInstance(mMediaLibraryController, fragmentExtra));
         }
     }
 

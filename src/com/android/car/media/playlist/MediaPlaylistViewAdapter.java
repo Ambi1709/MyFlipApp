@@ -13,7 +13,6 @@ import com.harman.psa.widget.verticallist.model.ItemData;
 
 import java.util.List;
 
-
 public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final String TAG = "MediaPlaylistViewAdapter";
@@ -22,8 +21,6 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
     long mCurrentQueueId;
 
     public interface OnItemClickListener {
-        void onItemClick(ItemData itemValue);
-
         void onQueueItemClick(MediaSession.QueueItem item);
     }
 
@@ -64,7 +61,6 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
         final MediaSession.QueueItem queueItem = (MediaSession.QueueItem) mQueueList.get(viewItemPosition);
 
         //BUILD itemdata
-
 
         MediaDescription itemDescription = queueItem.getDescription();
         ItemData.Builder builder = new ItemData.Builder();

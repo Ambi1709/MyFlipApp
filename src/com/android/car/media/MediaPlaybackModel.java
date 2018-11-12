@@ -33,6 +33,7 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.android.car.apps.common.util.Assert;
+import com.android.car.media.MediaLibraryController;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -48,7 +49,8 @@ import java.util.function.Consumer;
 public class MediaPlaybackModel {
     private static final String TAG = "MediaPlaybackModel";
 
-    public static final String PLAYLIST_PLAYING_KEY = "playlist";
+    private static final String ADD_TOP_KEY = "ADD_TOP";
+    private static final String ADD_BOTTOM_KEY = "ADD_BOTTOM";
 
     private final Context mContext;
     private final Bundle mBrowserExtras;
@@ -65,11 +67,14 @@ public class MediaPlaybackModel {
 
     private MediaMetadata mCurrentTrackMetadata;
 
+    private final static int SHUFFLE_OFF_STATE = 0;
+    private final static int SHUFFLE_ON_STATE = 1;
+
     private static int mShuffleState = -1;
     private static int mRepeatState = -1;
 
-    PlaybackState.CustomAction mRepeatAction;
-    PlaybackState.CustomAction mShuffleAction;
+    private PlaybackState.CustomAction mRepeatAction;
+    private PlaybackState.CustomAction mShuffleAction;
 
     /**
      * This is the interface to listen to {@link MediaPlaybackModel} callbacks. All callbacks are
@@ -256,6 +261,15 @@ public class MediaPlaybackModel {
     }
 
     @MainThread
+    public long getActiveQueueItemId() {
+        PlaybackState playbackState = getPlaybackState();
+        if (playbackState != null) {
+            return playbackState.getActiveQueueItemId();
+        }
+        return MediaSession.QueueItem.UNKNOWN_ID;
+    }
+
+    @MainThread
     public PlaybackState getPlaybackState() {
         Assert.isMainThread();
         if (mController == null) {
@@ -380,7 +394,7 @@ public class MediaPlaybackModel {
                 mPrimaryColorDark = manager.getMediaClientPrimaryColorDark();
 
                 final ComponentName currentName = mCurrentComponentName;
-                notifyListeners((listener) -> listener.onMediaAppChanged(currentName, name));
+                notifyListeners((listener) -> {if(listener != null){listener.onMediaAppChanged(currentName, name);}});
                 mCurrentComponentName = name;
             });
         }
@@ -505,6 +519,64 @@ public class MediaPlaybackModel {
                 mRepeatAction = customAction;
                 mRepeatState = extras.getInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
             }
+        }
+    }
+
+    public void playItemAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
+        MediaController.TransportControls controls = getTransportControls();
+        if (controls != null) {
+            setShuffleState(SHUFFLE_OFF_STATE);
+            Bundle extras = new Bundle(itemExtras);
+            if(extras == null){
+                extras = new Bundle();
+            }
+            extras.putInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY, itemType);
+            extras.putString(MediaLibraryController.ROOT_CATEGORY_ID_KEY, rootCategoryId);
+            controls.playFromMediaId(itemId, extras);
+        }
+
+    }
+
+    public void addItemToQueueTopAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
+        MediaController.TransportControls controls = getTransportControls();
+        if (controls != null) {
+            Bundle extras = new Bundle(itemExtras);
+            if(extras == null){
+                extras = new Bundle();
+            }
+            extras.putBoolean(ADD_TOP_KEY, true);
+            extras.putInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY, itemType);
+            extras.putString(MediaLibraryController.ROOT_CATEGORY_ID_KEY, rootCategoryId);
+            controls.prepareFromMediaId(itemId, extras);
+        }
+    }
+
+    public void addItemToQueueBottomAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
+        MediaController.TransportControls controls = getTransportControls();
+        if (controls != null) {
+            Bundle extras = new Bundle(itemExtras);
+            if(extras == null){
+                extras = new Bundle();
+            }
+            extras.putBoolean(ADD_BOTTOM_KEY, true);
+            extras.putInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY, itemType);
+            extras.putString(MediaLibraryController.ROOT_CATEGORY_ID_KEY, rootCategoryId);
+            controls.prepareFromMediaId(itemId, extras);
+        }
+    }
+
+    public void shufflePlayItemAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
+        MediaController.TransportControls controls = getTransportControls();
+        if (controls != null) {
+            setShuffleState(SHUFFLE_OFF_STATE);
+            Bundle extras = new Bundle(itemExtras);
+            if(extras == null){
+                extras = new Bundle();
+            }
+            extras.putInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY, itemType);
+            extras.putString(MediaLibraryController.ROOT_CATEGORY_ID_KEY, rootCategoryId);
+            controls.playFromMediaId(itemId, extras);
+            setShuffleState(SHUFFLE_ON_STATE);
         }
     }
 }
