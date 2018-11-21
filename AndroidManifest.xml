@@ -29,6 +29,10 @@
         android:label="CarMediaApp"
         android:theme="@style/PSAAppNightTheme"
         android:largeHeap="true"
+		android:resizeableActivity="true"
+		android:exported="true"   
+        android:allowEmbedded="true"
+        android:supportsPictureInPicture="true"
         android:name="com.android.car.PSACarMediaApp"
         android:persistent="true">
 
@@ -39,8 +43,10 @@
         <activity
             android:name=".MediaActivity"
             android:label="CarMediaApp"
-            android:launchMode="singleTop"
             android:resizeableActivity="true"
+			android:exported="true"   
+            android:allowEmbedded="true"
+            android:supportsPictureInPicture="true"
             android:theme="@style/PSAAppNightTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
