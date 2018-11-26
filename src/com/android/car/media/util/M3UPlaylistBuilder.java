@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.lang.StringBuilder;
 
 public class M3UPlaylistBuilder {
 
@@ -30,11 +31,16 @@ public class M3UPlaylistBuilder {
     }
 
     public void addTrack(int duration, String artist, String title, String path) {
-        String trackInfo = M3U_TRACK_HEADER + duration + ", " + artist + " - " + title;
-		Log.d(TAG, trackInfo);
-		Log.d(TAG, path);
-        mContents.add(trackInfo);
-        mContents.add(path);
+        StringBuilder trackInfo = new StringBuilder(M3U_TRACK_HEADER);
+        trackInfo.append(duration);
+        trackInfo.append(", ");
+        if (artist != null) {
+            trackInfo.append(artist);
+            trackInfo.append(" - ");
+        }
+        trackInfo.append(title);
+        mContents.add(trackInfo.toString());
+        mContents.add("file://" + path);
     }
 
     public boolean save() {

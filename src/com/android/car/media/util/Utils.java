@@ -6,9 +6,10 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.net.Uri;
+import android.util.Log;
 
 public class Utils {
-
+    private static final String TAG = Utils.class.getSimpleName();
     public static final String[] PERMISSIONS = {
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
@@ -24,6 +25,7 @@ public class Utils {
     public static boolean hasRequiredPermissions(Context context) {
         for (String permission : PERMISSIONS) {
             if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Application hasn't all required permissions.");
                 return false;
             }
         }

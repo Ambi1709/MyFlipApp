@@ -17,6 +17,7 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.util.Log;
 
 import com.android.car.apps.common.util.Assert;
 import com.android.car.media.MediaPlaylistViewAdapter;
@@ -233,6 +234,7 @@ public class MediaPlaylistFragment extends PSABaseFragment
         if (requestCode == WRITE_PERMISSION_REQUEST_CODE) {
             for (int grantResult : grantResults) {
                 if (grantResult != PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "Required permissions for saving playlist didn't grant.");
                     return;
                 }
             }
@@ -246,6 +248,8 @@ public class MediaPlaylistFragment extends PSABaseFragment
                     R.string.playlist_saved,
                     PSAToast.LENGTH_SHORT)
                     .show();
+        } else {
+            Log.d(TAG, "Playlist didn't save.");
         }
     }
 

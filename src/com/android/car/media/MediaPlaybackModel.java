@@ -588,7 +588,7 @@ public class MediaPlaybackModel {
 
     boolean saveCurrentTracklist() {
         List<MediaSession.QueueItem> queue = getQueue();
-		if (queue.size() == 0) {
+        if (queue.size() == 0) {
             return false;
         }
         M3UPlaylistBuilder playlistBuilder = new M3UPlaylistBuilder();
@@ -601,7 +601,11 @@ public class MediaPlaybackModel {
                 path = extras.getString(PATH_KEY);
                 secs = (int) TimeUnit.MILLISECONDS.toSeconds(extras.getLong(DURATION_KEY));
             }
-            String artist = description.getSubtitle().toString();
+            String artist = null;
+            CharSequence subtitle = description.getSubtitle();
+            if (subtitle != null) {
+                artist = subtitle.toString();
+            }
             String title = description.getTitle().toString();
             playlistBuilder.addTrack(secs, artist, title, path);
         }
