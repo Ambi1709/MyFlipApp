@@ -25,16 +25,16 @@
         android:targetSdkVersion='27' />
 
     <application
+        android:name="com.android.car.PSACarMediaApp"
+        android:allowEmbedded="true"
+        android:exported="true"
         android:icon="@drawable/ic_music"
         android:label="CarMediaApp"
-        android:theme="@style/PSAAppNightTheme"
         android:largeHeap="true"
-		android:resizeableActivity="true"
-		android:exported="true"   
-        android:allowEmbedded="true"
+        android:persistent="true"
+        android:resizeableActivity="true"
         android:supportsPictureInPicture="true"
-        android:name="com.android.car.PSACarMediaApp"
-        android:persistent="true">
+        android:theme="@style/PSAAppNightTheme">
 
         <meta-data
             android:name="android.car.application"
@@ -42,10 +42,10 @@
 
         <activity
             android:name=".MediaActivity"
+            android:allowEmbedded="true"
+            android:exported="true"
             android:label="CarMediaApp"
             android:resizeableActivity="true"
-			android:exported="true"   
-            android:allowEmbedded="true"
             android:supportsPictureInPicture="true"
             android:theme="@style/PSAAppNightTheme">
             <intent-filter>
@@ -62,4 +62,3 @@
         <service android:name="com.android.car.usb.PSAUsbStateService" />
     </application>
 </manifest>
-

@@ -65,13 +65,26 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.Manifest;
+
+import java.util.ArrayList;
 
 /**
  * Fragment that displays the media playback UI.
  */
 public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlaybackModel.Listener {
     private static final String TAG = "MediaPlayback";
-
+    private static final String MEDIA_TEMPLATE_COMPONENT = "com.android.car.media";
+    private static final String CARLOCALMEDIAPLAYER_PACKAGE_NAME =
+            "com.android.car.media.localmediaplayer";
+    private static final String CARLOCALMEDIAPLAYER_CLASS_NAME =
+            "com.android.car.media.localmediaplayer.LocalMediaBrowserService";
+    private static final String BLUETOOTH_PACKAGE_NAME = "com.android.bluetooth";
+    private static final String BLUETOOTH_CLASS_NAME =
+            "com.android.bluetooth.a2dpsink.mbs.A2dpMediaBrowserService";
     /**
      * The preferred ordering for bitmap to fetch. The metadata at lower indexes are preferred to
      * those at higher indexes.
@@ -96,6 +109,8 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     private static final int NO_CONTENT_VIEW = 0;
     private static final int PLAYBACK_CONTROLS_VIEW = 1;
     private static final int LOADING_VIEW = 2;
+
+    private static final int BLUETOOTH_SOURCE_ID = 1;
 
     @IntDef({NO_CONTENT_VIEW, PLAYBACK_CONTROLS_VIEW, LOADING_VIEW})
     private @interface ViewType {
@@ -976,6 +991,37 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
             mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
         }
 
+        private void startPlayerService(String media_package, String media_class) {
+            Intent launchIntent = mContext.getPackageManager().
+                    getLaunchIntentForPackage(MEDIA_TEMPLATE_COMPONENT);
+            launchIntent.putExtra(MediaManager.KEY_MEDIA_PACKAGE, media_package);
+            launchIntent.putExtra(MediaManager.KEY_MEDIA_CLASS, media_class);
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                    Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
+            startActivity(launchIntent);
+        }
+
+        private List<String> getGrantedPermissions(String packageName) {
+            List<String> granted = new ArrayList<String>();
+
+            PackageInfo pi = null;
+            try {
+                pi = mContext.getPackageManager().
+                        getPackageInfo(packageName, PackageManager.GET_PERMISSIONS);
+            } catch (PackageManager.NameNotFoundException e) {
+                Log.e(TAG, "Error get packageInfor for permissions: " + e.getMessage(), e);
+            }
+            if (pi != null) {
+                for (int i = 0; i < pi.requestedPermissions.length; i++) {
+                    if ((pi.requestedPermissionsFlags[i] &
+                            PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0) {
+                        granted.add(pi.requestedPermissions[i]);
+                    }
+                }
+            }
+            return granted;
+        }
+
         private final OnDropdownItemClickListener mDropDowmItemClickListener = new OnDropdownItemClickListener() {
             @Override
             public void onItemClick(DropdownItem item) {
@@ -988,7 +1034,20 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
                 mSourceId = item.getItemId();
                 ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
                         ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme()));
+                if (mSourceId == BLUETOOTH_SOURCE_ID) {
+                    startPlayerService(BLUETOOTH_PACKAGE_NAME,
+                            BLUETOOTH_CLASS_NAME);
+                    return;
+                } else {
+                    startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
+                            CARLOCALMEDIAPLAYER_CLASS_NAME);
+                }
 
+                if (!getGrantedPermissions(CARLOCALMEDIAPLAYER_PACKAGE_NAME).
+                        contains(Manifest.permission.READ_EXTERNAL_STORAGE) && mSourceId != 1) {
+                    Log.w(TAG, "Permissiont not granted");
+                    return;
+                }
                 /***** Temporary *****/
                 mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {
                     @Override
@@ -1162,7 +1221,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     }
 
     private void generateSourceIconMap() {
-        mSourceIconMap.put(1, R.drawable.psa_media_source_bluetooth);
+        mSourceIconMap.put(BLUETOOTH_SOURCE_ID, R.drawable.psa_media_source_bluetooth);
         mSourceIconMap.put(2, R.drawable.psa_media_source_aux);
         mSourceIconMap.put(3, R.drawable.psa_media_source_ipod);
         mSourceIconMap.put(4, R.drawable.psa_media_source_usb);
