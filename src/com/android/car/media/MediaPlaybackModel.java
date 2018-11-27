@@ -19,6 +19,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.media.MediaDescription;
 import android.media.MediaMetadata;
 import android.media.browse.MediaBrowser;
 import android.media.session.MediaController;
@@ -34,10 +35,12 @@ import android.util.Log;
 
 import com.android.car.apps.common.util.Assert;
 import com.android.car.media.MediaLibraryController;
+import com.android.car.media.util.M3UPlaylistBuilder;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -51,6 +54,9 @@ public class MediaPlaybackModel {
 
     private static final String ADD_TOP_KEY = "ADD_TOP";
     private static final String ADD_BOTTOM_KEY = "ADD_BOTTOM";
+
+    private static final String PATH_KEY = "PATH";
+    private static final String DURATION_KEY = "DURATION";
 
     private final Context mContext;
     private final Bundle mBrowserExtras;
@@ -578,5 +584,27 @@ public class MediaPlaybackModel {
             controls.playFromMediaId(itemId, extras);
             setShuffleState(SHUFFLE_ON_STATE);
         }
+    }
+
+    boolean saveCurrentTracklist() {
+        List<MediaSession.QueueItem> queue = getQueue();
+		if (queue.size() == 0) {
+            return false;
+        }
+        M3UPlaylistBuilder playlistBuilder = new M3UPlaylistBuilder();
+        for (MediaSession.QueueItem item: queue) {
+            MediaDescription description = item.getDescription();
+            Bundle extras = description.getExtras();
+            String path = "";
+            int secs = 0;
+            if (extras != null) {
+                path = extras.getString(PATH_KEY);
+                secs = (int) TimeUnit.MILLISECONDS.toSeconds(extras.getLong(DURATION_KEY));
+            }
+            String artist = description.getSubtitle().toString();
+            String title = description.getTitle().toString();
+            playlistBuilder.addTrack(secs, artist, title, path);
+        }
+        return playlistBuilder.save();
     }
 }

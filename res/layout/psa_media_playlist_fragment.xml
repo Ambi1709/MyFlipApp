@@ -36,5 +36,13 @@
             android:layout_height="@dimen/psa_media_action_size_height"
             android:scaleType="centerInside" />
 
+        <com.harman.psa.widget.button.PSAIconButton
+            android:id="@+id/playlist_save"
+            style="@style/IconButton"
+            android:src="@drawable/psa_media_button_icon_playlist_save"
+            android:layout_width="@dimen/psa_media_action_size_width"
+            android:layout_height="@dimen/psa_media_action_size_height"
+            android:scaleType="centerInside" />
+
     </LinearLayout>
 </RelativeLayout>

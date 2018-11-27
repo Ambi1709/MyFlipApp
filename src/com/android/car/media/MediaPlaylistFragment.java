@@ -1,7 +1,9 @@
 package com.android.car.media;
 
 
+import android.Manifest;
 import android.annotation.TargetApi;
+import android.content.pm.PackageManager;
 import android.graphics.PorterDuff;
 import android.media.session.MediaController;
 import android.media.session.MediaSession;
@@ -10,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,10 +20,13 @@ import android.view.ViewGroup;
 
 import com.android.car.apps.common.util.Assert;
 import com.android.car.media.MediaPlaylistViewAdapter;
+import com.android.car.media.Utils;
 import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseFragment;
 import com.harman.psa.widget.button.OnCycleChangeListener;
 import com.harman.psa.widget.button.PSACyclicButton;
+import com.harman.psa.widget.button.PSAIconButton;
+import com.harman.psa.widget.toast.PSAToast;
 import com.harman.psa.widget.verticallist.PsaRecyclerView;
 
 import java.util.List;
@@ -28,6 +34,7 @@ import java.util.List;
 public class MediaPlaylistFragment extends PSABaseFragment
         implements MediaPlaylistViewAdapter.OnItemClickListener {
     private static final String TAG = "PSAMediaPlaylistFragment";
+	private static final int WRITE_PERMISSION_REQUEST_CODE = 10;
 
     private PsaRecyclerView mRecyclerView;
     private MediaPlaylistViewAdapter mAdapter;
@@ -35,6 +42,7 @@ public class MediaPlaylistFragment extends PSABaseFragment
 
     private PSACyclicButton mRepeatButton;
     private PSACyclicButton mShuffleButton;
+    private PSAIconButton mPlaylistSaveButton;
 
     private int mShuffleState = -1;
     private int mRepeatState = -1;
@@ -59,6 +67,7 @@ public class MediaPlaylistFragment extends PSABaseFragment
 
         mRepeatButton = v.findViewById(R.id.playlist_repeat);
         mShuffleButton = v.findViewById(R.id.playlist_shuffle);
+        mPlaylistSaveButton = v.findViewById(R.id.playlist_save);
         mRepeatButton.setImages(new int[]{R.drawable.psa_media_button_icon_repeat_off,
                 R.drawable.psa_media_button_icon_repeat_on,
                 R.drawable.psa_media_button_icon_repeat_one});
@@ -66,8 +75,10 @@ public class MediaPlaylistFragment extends PSABaseFragment
         mShuffleButton.setImages(new int[]{R.drawable.psa_media_button_icon_shuffle_on,
                 R.drawable.psa_media_button_icon_shuffle_on});
 
+
         mShuffleButton.setListener(mShuffleButtonClickListener);
         mRepeatButton.setListener(mRepeatButtonClickListener);
+        mPlaylistSaveButton.setClickListener(mPlaylistSaveButtonClickListener);
 
         if (mShuffleState == -1) {
             mShuffleButton.setEnabled(false);
@@ -206,6 +217,37 @@ public class MediaPlaylistFragment extends PSABaseFragment
         }
     };
 
+    private final View.OnClickListener mPlaylistSaveButtonClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (Utils.hasRequiredPermissions(getContext())) {
+                saveCurrentTracklist();
+            } else {
+                requestPermissions(Utils.PERMISSIONS, WRITE_PERMISSION_REQUEST_CODE);
+            }
+        }
+    };
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == WRITE_PERMISSION_REQUEST_CODE) {
+            for (int grantResult : grantResults) {
+                if (grantResult != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+            }
+            saveCurrentTracklist();
+        }
+    }
+
+    private void saveCurrentTracklist() {
+        if (mMediaPlaybackModel.saveCurrentTracklist()) {
+            PSAToast.makeText(getContext(),
+                    R.string.playlist_saved,
+                    PSAToast.LENGTH_SHORT)
+                    .show();
+        }
+    }
 
     public void onQueueItemClick(MediaSession.QueueItem item) {
         MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
