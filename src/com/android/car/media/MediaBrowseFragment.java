@@ -4,8 +4,21 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.res.Resources;
+import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.drawable.Drawable;
+import android.media.browse.MediaBrowser;
+import android.media.session.MediaController;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.IBinder;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +28,9 @@ import com.android.car.media.LibraryGridListAdapter;
 import com.android.car.media.MediaLibraryController;
 import com.android.car.media.MediaLibraryFragment;
 import com.android.car.media.MediaPlaybackModel;
+import android.widget.Toast;
+import com.android.car.usb.PSAUsbStateService;
+import com.android.car.usb.UsbDevice;
 import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseFragment;
 import com.harman.psa.widget.dropdowns.DropdownButton;
@@ -23,14 +39,24 @@ import com.harman.psa.widget.dropdowns.DropdownHelper;
 import com.harman.psa.widget.dropdowns.DropdownItem;
 import com.harman.psa.widget.dropdowns.listener.OnDismissListener;
 import com.harman.psa.widget.dropdowns.listener.OnDropdownButtonClickEventListener;
+import com.harman.psa.widget.dropdowns.listener.OnDropdownItemClickListener;
 import com.harman.psa.widget.verticallist.model.ItemData;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MediaBrowseFragment extends PSABaseFragment implements
-        LibraryGridListAdapter.LibraryGridListItemClickListener,
-        MediaLibraryController.ItemsUpdatedCallback {
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+
+import android.graphics.PorterDuff;
+
+import static android.content.Context.BIND_AUTO_CREATE;
+
+public class MediaBrowseFragment extends MediaBaseFragment implements
+        LibraryGridListAdapter.LibraryGridListItemClickListener, MediaLibraryController.ItemsUpdatedCallback,
+        OnDropdownButtonClickEventListener, OnDropdownItemClickListener, PSAUsbStateService.UsbDeviceStateListener,
+        OnDismissListener {
     private static final String TAG = "MediaBrowseFragment";
 
     private RecyclerView mRecyclerView;
@@ -39,23 +65,25 @@ public class MediaBrowseFragment extends PSABaseFragment implements
     private MediaPlaybackModel mMediaPlaybackModel;
     private MediaLibraryController mMediaLibraryController;
 
-    private PSAAppBarButton mUsbSwitchButton;
-
     private String mRootId = "";
 
     private List<LibraryCategoryGridItemData> mCategoriesList = new ArrayList<>();
+
+    private PSAAppBarButton mSourceSwitchButton;
+
+    private PSAUsbStateService mUsbNotificationService;
+
+    private DropdownDialog mDropdownDialog;
+
+    private List<DropdownItem> mDropdownItems = new ArrayList<>();
+
+    private String mSourceId;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
         mMediaLibraryController = new MediaLibraryController(mMediaPlaybackModel, this);
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        mMediaLibraryController.removeListener(this);
     }
 
     @Override
@@ -79,38 +107,127 @@ public class MediaBrowseFragment extends PSABaseFragment implements
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        DropdownButton usbSwitchButton = (DropdownButton) LayoutInflater.from(getContext()).inflate(
-                R.layout.psa_view_usb_switch_button,
+        DropdownButton sourceSwitchButton = (DropdownButton) LayoutInflater.from(getContext()).inflate(
+                R.layout.psa_view_source_switch_button,
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_3),
                 false);
-        mUsbSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_3, usbSwitchButton);
-        getAppBarView().replaceAppBarButton(mUsbSwitchButton);
-        usbSwitchButton.setOnDropdownButtonClickEventListener(mUsbButtonClickListener);
+        sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.psa_media_source_usb, getActivity().getTheme()));
+        mSourceSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_3, sourceSwitchButton);
+        getAppBarView().replaceAppBarButton(mSourceSwitchButton);
+        sourceSwitchButton.setOnDropdownButtonClickEventListener(this);
+        mSourceId = getSourceId();
     }
 
-    private final OnDropdownButtonClickEventListener mUsbButtonClickListener = new OnDropdownButtonClickEventListener() {
-        @Override
-        public void onClick(DropdownButton view) {
-            DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
-                    getActivity().getTheme()));
-            DropdownDialog.setDefaultTextColor(Color.BLACK);
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        saveSourceId(mSourceId);
+    }
 
-            DropdownDialog mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.HORIZONTAL, DropdownHelper.ItemType.ICON);
-            mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
-                    getActivity().getTheme()));
-            mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
+    @Override
+    public void onStop() {
+        super.onStop();
+        mMediaLibraryController.removeListener(this);
+    }
 
-            mDropdownDialog.addDropdownItem(new DropdownItem(1, "", R.drawable.psa_media_source_usb1, DropdownHelper.ItemType.ICON));
-            mDropdownDialog.addDropdownItem(new DropdownItem(2, "", R.drawable.psa_media_source_usb2, DropdownHelper.ItemType.ICON));
+    @Override
+    void onUsbServiceReady(PSAUsbStateService usbNotificationService) {
+        mUsbNotificationService = usbNotificationService;
+        mUsbNotificationService.setUsbDeviceStateListener(this);
+    }
 
-            mDropdownDialog.setOnDismissListener(new OnDismissListener() {
+    @Override
+    public void onUsbDeviceStateChanged() {
+        if (mUsbNotificationService.getUsbDeviceByDeviceId(mSourceId) == null) {
+            final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+            if (controls != null) {
+                controls.stop();
+            }
+            selectFoldersAsMediaSource();
+        }
+        showVolumesDialogIfCan();
+    }
+
+    private void showVolumesDialog(List<UsbDevice> usbDevices) {
+        DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
+                getActivity().getTheme()));
+        DropdownDialog.setDefaultTextColor(Color.BLACK);
+        if (mDropdownDialog == null) {
+            mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.HORIZONTAL, DropdownHelper.ItemType.ICON);
+        } else {
+            for (DropdownItem dropdownItem : mDropdownItems) {
+                mDropdownDialog.removeDropdownItem(dropdownItem);
+            }
+        }
+        mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
+                getActivity().getTheme()));
+        mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
+        mDropdownItems.clear();
+        for (int i = 0; i < usbDevices.size(); i++) {
+            UsbDevice usbDevice = usbDevices.get(i);
+            int icon = R.drawable.psa_media_source_usb;
+            if (i == 0) {
+                icon = R.drawable.psa_media_source_usb1;
+            } else if (i == 1) {
+                icon = R.drawable.psa_media_source_usb2;
+            }
+            DropdownItem dropdownItem = new DropdownItem(usbDevice.getId(), usbDevice.getName(), icon, DropdownHelper.ItemType.ICON);
+            mDropdownDialog.addDropdownItem(dropdownItem);
+            mDropdownItems.add(dropdownItem);
+            if (usbDevice.getDeviceId().equals(mSourceId)) {
+                dropdownItem.setSelected(true);
+            }
+        }
+        mDropdownDialog.setOnActionItemClickListener(this);
+        mDropdownDialog.setOnDismissListener(this);
+        mDropdownDialog.show(mSourceSwitchButton.getAppBarButton(), DropdownHelper.Side.LEFT);
+    }
+
+    private void showVolumesDialogIfCan() {
+        List<UsbDevice> usbDevices = mUsbNotificationService.getUsbDevices();
+        if (usbDevices.isEmpty()) {
+            if (mDropdownDialog != null) {
+                mDropdownDialog.dismiss();
+            }
+        } else {
+            showVolumesDialog(usbDevices);
+        }
+    }
+
+    @Override
+    public void onDismiss() {
+        mDropdownDialog = null;
+    }
+
+    @Override
+    public void onClick(DropdownButton view) {
+        showVolumesDialogIfCan();
+    }
+
+    @Override
+    public void onItemClick(DropdownItem item) {
+        mDropdownDialog = null;
+        item.setSelected(true);
+        UsbDevice usbDevice = mUsbNotificationService.getUsbDeviceById(item.getItemId());
+        if (usbDevice != null) {
+            mSourceId = usbDevice.getDeviceId();
+            final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+            if (controls != null) {
+                controls.stop();
+            }
+            Bundle extras = new Bundle();
+            extras.putStringArray("PATH", usbDevice.getVolumePaths());
+            mMediaPlaybackModel.getMediaBrowser().subscribe("__USB__", extras, new MediaBrowser.SubscriptionCallback() {
                 @Override
-                public void onDismiss() {
+                public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children, Bundle options) {
+                    if (controls != null && !children.isEmpty()) {
+                        MediaBrowser.MediaItem mediaItem = children.get(0);
+                        controls.playFromMediaId(mediaItem.getMediaId(), mediaItem.getDescription().getExtras());
+                    }
                 }
             });
-            mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
         }
-    };
+    }
 
     @Override
     public void onItemClicked(LibraryCategoryGridItemData data) {
@@ -151,5 +268,12 @@ public class MediaBrowseFragment extends PSABaseFragment implements
         return;
     }
 
+    private void selectFoldersAsMediaSource() {
+        /***** Temporary *****/
+        mSourceId = "5";
+        mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__",
+                new MediaBrowser.SubscriptionCallback() {});
+        /***** Temporary *****/
+    }
 
 }

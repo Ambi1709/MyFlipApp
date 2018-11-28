@@ -3,6 +3,8 @@ package com.android.car.media;
 import android.annotation.TargetApi;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -20,6 +22,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.UserManager;
+import android.os.IBinder;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
@@ -45,8 +48,9 @@ import com.android.car.apps.common.BitmapDownloader;
 import com.android.car.apps.common.BitmapWorkerOptions;
 import com.android.car.apps.common.ColorChecker;
 import com.android.car.apps.common.util.Assert;
-import com.android.car.media.R;
 import com.android.car.media.util.widgets.PlayPauseStopImageView;
+import com.android.car.usb.PSAUsbStateService;
+import com.android.car.usb.UsbDevice;
 import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseFragment;
 import com.harman.psa.widget.button.OnCycleChangeListener;
@@ -60,9 +64,7 @@ import com.harman.psa.widget.dropdowns.listener.OnDropdownButtonClickEventListen
 import com.harman.psa.widget.dropdowns.listener.OnDropdownItemClickListener;
 import com.harman.psa.widget.toast.PSAToast;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import android.content.Intent;
@@ -72,10 +74,13 @@ import android.Manifest;
 
 import java.util.ArrayList;
 
+import static android.content.Context.BIND_AUTO_CREATE;
+
 /**
  * Fragment that displays the media playback UI.
  */
-public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlaybackModel.Listener {
+public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPlaybackModel.Listener,
+        PSAUsbStateService.UsbDeviceStateListener, OnDropdownItemClickListener {
     private static final String TAG = "MediaPlayback";
     private static final String MEDIA_TEMPLATE_COMPONENT = "com.android.car.media";
     private static final String CARLOCALMEDIAPLAYER_PACKAGE_NAME =
@@ -110,7 +115,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
     private static final int PLAYBACK_CONTROLS_VIEW = 1;
     private static final int LOADING_VIEW = 2;
 
-    private static final int BLUETOOTH_SOURCE_ID = 1;
+    private static final String BLUETOOTH_SOURCE_ID = "1";
 
     @IntDef({NO_CONTENT_VIEW, PLAYBACK_CONTROLS_VIEW, LOADING_VIEW})
     private @interface ViewType {
@@ -208,8 +213,12 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
     private DropdownDialog mDropdownDialog;
 
-    private HashMap<Integer, Integer> mSourceIconMap = new HashMap();
-    private int mSourceId = 0;
+    private HashMap<String, Integer> mSourceIconMap = new HashMap();
+    private String mSourceId;
+
+    private List<DropdownItem> mUsbDropdownItems = new LinkedList<>();
+
+    private PSAUsbStateService mUsbStateService;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -242,6 +251,7 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         // Calling this with null will clear queue of callbacks and message.
         mHandler.removeCallbacksAndMessages(null);
         mDelayedResetTitleInProgress = false;
+        saveSourceId(mSourceId);
     }
 
     @Override
@@ -319,7 +329,18 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
                 R.layout.psa_view_source_switch_button,
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_3),
                 false);
-        sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), getActivity().getTheme()));
+        MediaActivity mediaActivity = (MediaActivity) getActivity();
+        mSourceId = getSourceId();
+        if (!TextUtils.isEmpty(mSourceId)) {
+            int icon = mSourceIconMap.containsKey(mSourceId) ? mSourceIconMap.get(mSourceId) :
+                    R.drawable.psa_media_source_usb;
+            sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(), icon,
+                    mediaActivity.getTheme()));
+        } else {
+            mSourceId = "5";
+            sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(),
+                    mSourceIconMap.get(mSourceId), mediaActivity.getTheme()));
+        }
         mSourceSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_3, sourceSwitchButton);
         getAppBarView().replaceAppBarButton(mSourceSwitchButton);
         sourceSwitchButton.setOnDropdownButtonClickEventListener(mSourceButtonClickListener);
@@ -354,6 +375,14 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
         mShuffleButton.setListener(mShuffleButtonClickListener);
         mRepeatButton.setListener(mRepeatButtonClickListener);
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (mUsbStateService != null) {
+            mUsbStateService.setUsbDeviceStateListener(null);
+        }
+        super.onDestroyView();
     }
 
     @Override
@@ -962,139 +991,38 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
         }
     };
 
-    private final OnDropdownButtonClickEventListener mSourceButtonClickListener = new OnDropdownButtonClickEventListener() {
-        @Override
-        public void onClick(DropdownButton view) {
-            DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
-                    mContext.getTheme()));
-            DropdownDialog.setDefaultTextColor(Color.BLACK);
+    private final OnDropdownButtonClickEventListener mSourceButtonClickListener = this::showSourcesDialog;
 
-            mDropdownDialog = new DropdownDialog(mContext, DropdownDialog.VERTICAL);
-            mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
-                    mContext.getTheme()));
-            mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
+    private void startPlayerService(String media_package, String media_class) {
+        Intent launchIntent = mContext.getPackageManager().
+                getLaunchIntentForPackage(MEDIA_TEMPLATE_COMPONENT);
+        launchIntent.putExtra(MediaManager.KEY_MEDIA_PACKAGE, media_package);
+        launchIntent.putExtra(MediaManager.KEY_MEDIA_CLASS, media_class);
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
+        startActivity(launchIntent);
+    }
 
-            // TODO refresh sources list
-            int[] i = {0};
-            mSourceIconMap.entrySet().stream().forEach(e -> {
-                mDropdownDialog.addDropdownItem(new DropdownItem(++(i[0]), e.getKey() + " source", e.getValue()));
-            });
+    private List<String> getGrantedPermissions(String packageName) {
+        List<String> granted = new ArrayList<String>();
 
-            //Set listener for action item clicked
-            mDropdownDialog.setOnActionItemClickListener(mDropDowmItemClickListener);
-
-            mDropdownDialog.setOnDismissListener(new OnDismissListener() {
-                @Override
-                public void onDismiss() {
-                }
-            });
-            mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
+        PackageInfo pi = null;
+        try {
+            pi = mContext.getPackageManager().
+                    getPackageInfo(packageName, PackageManager.GET_PERMISSIONS);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.e(TAG, "Error get packageInfor for permissions: " + e.getMessage(), e);
         }
-
-        private void startPlayerService(String media_package, String media_class) {
-            Intent launchIntent = mContext.getPackageManager().
-                    getLaunchIntentForPackage(MEDIA_TEMPLATE_COMPONENT);
-            launchIntent.putExtra(MediaManager.KEY_MEDIA_PACKAGE, media_package);
-            launchIntent.putExtra(MediaManager.KEY_MEDIA_CLASS, media_class);
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                    Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
-            startActivity(launchIntent);
-        }
-
-        private List<String> getGrantedPermissions(String packageName) {
-            List<String> granted = new ArrayList<String>();
-
-            PackageInfo pi = null;
-            try {
-                pi = mContext.getPackageManager().
-                        getPackageInfo(packageName, PackageManager.GET_PERMISSIONS);
-            } catch (PackageManager.NameNotFoundException e) {
-                Log.e(TAG, "Error get packageInfor for permissions: " + e.getMessage(), e);
-            }
-            if (pi != null) {
-                for (int i = 0; i < pi.requestedPermissions.length; i++) {
-                    if ((pi.requestedPermissionsFlags[i] &
-                            PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0) {
-                        granted.add(pi.requestedPermissions[i]);
-                    }
+        if (pi != null) {
+            for (int i = 0; i < pi.requestedPermissions.length; i++) {
+                if ((pi.requestedPermissionsFlags[i] &
+                        PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0) {
+                    granted.add(pi.requestedPermissions[i]);
                 }
             }
-            return granted;
         }
-
-        private final OnDropdownItemClickListener mDropDowmItemClickListener = new OnDropdownItemClickListener() {
-            @Override
-            public void onItemClick(DropdownItem item) {
-                //here we can filter which action item was clicked with pos or actionId parameter
-                String title = item.getTitle();
-                PSAToast.makeText(getContext(), title + " selected", Toast.LENGTH_SHORT).show();
-                if (!item.isSticky()) {
-                    mDropdownDialog.removeDropdownItem(item);
-                }
-                mSourceId = item.getItemId();
-                ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
-                        ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme()));
-                if (mSourceId == BLUETOOTH_SOURCE_ID) {
-                    startPlayerService(BLUETOOTH_PACKAGE_NAME,
-                            BLUETOOTH_CLASS_NAME);
-                    return;
-                } else {
-                    startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
-                            CARLOCALMEDIAPLAYER_CLASS_NAME);
-                }
-
-                if (!getGrantedPermissions(CARLOCALMEDIAPLAYER_PACKAGE_NAME).
-                        contains(Manifest.permission.READ_EXTERNAL_STORAGE) && mSourceId != 1) {
-                    Log.w(TAG, "Permissiont not granted");
-                    return;
-                }
-                /***** Temporary *****/
-                mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {
-                    @Override
-                    public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
-                        Log.d(TAG, "onChildrenLoaded " + parentId);
-                        if (children.size() > 0) {
-                            MediaBrowser.MediaItem itemM = children.get(0);
-                            for (MediaBrowser.MediaItem item : children) {
-                                itemM = item;
-                                if (item.getDescription().getTitle().equals("music")) {
-                                    break;
-                                }
-                            }
-
-                            mMediaPlaybackModel.getMediaBrowser().subscribe(itemM.getMediaId(), new MediaBrowser.SubscriptionCallback() {
-                                @Override
-                                public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
-                                    Log.d(TAG, "onChildrenLoaded " + parentId);
-                                    if (children.size() > 0) {
-                                        MediaBrowser.MediaItem itemM = children.get(0);
-
-                                        MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-                                        if (controls != null) {
-                                            controls.pause();
-                                            controls.playFromMediaId(itemM.getMediaId(), itemM.getDescription().getExtras());
-                                        }
-                                    }
-                                }
-
-                                @Override
-                                public void onError(String parentId) {
-                                    Log.e(TAG, "Error loading children of " + parentId);
-                                }
-                            });
-                        }
-                    }
-
-                    @Override
-                    public void onError(String parentId) {
-                        Log.e(TAG, "Error loading children of " + parentId);
-                    }
-                });
-
-                /***** Temporary *****/
-            }
-        };
-    };
+        return granted;
+    }
 
     private final OnCycleChangeListener mShuffleButtonClickListener = new OnCycleChangeListener() {
         @Override
@@ -1222,11 +1150,178 @@ public class MediaPlaybackFragment extends PSABaseFragment implements MediaPlayb
 
     private void generateSourceIconMap() {
         mSourceIconMap.put(BLUETOOTH_SOURCE_ID, R.drawable.psa_media_source_bluetooth);
-        mSourceIconMap.put(2, R.drawable.psa_media_source_aux);
-        mSourceIconMap.put(3, R.drawable.psa_media_source_ipod);
-        mSourceIconMap.put(4, R.drawable.psa_media_source_usb);
-        mSourceIconMap.put(5, R.drawable.psa_media_source_disc);
-        mSourceIconMap.put(6, R.drawable.psa_media_source_folder);
-        mSourceId = 6;
+        mSourceIconMap.put("2", R.drawable.psa_media_source_aux);
+        mSourceIconMap.put("3", R.drawable.psa_media_source_ipod);
+        mSourceIconMap.put("4", R.drawable.psa_media_source_disc);
+        mSourceIconMap.put("5", R.drawable.psa_media_source_folder);
+    }
+
+    @Override
+    void onUsbServiceReady(PSAUsbStateService usbNotificationService) {
+        mUsbStateService = usbNotificationService;
+        mUsbStateService.setUsbDeviceStateListener(this);
+    }
+
+    @Override
+    public void onUsbDeviceStateChanged() {
+        List<UsbDevice> usbDevices = mUsbStateService.getUsbDevices();
+        if (!mSourceIconMap.containsKey(mSourceId)
+                && usbDevices.stream().noneMatch(usbDevice -> usbDevice.getDeviceId().equals(mSourceId))) {
+            final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+            if (controls != null) {
+                controls.stop();
+            }
+            selectFoldersAsMediaSource();
+        }
+
+        if (mDropdownDialog != null) {
+            for (DropdownItem dropdownItem : mUsbDropdownItems) {
+                mDropdownDialog.removeDropdownItem(dropdownItem);
+            }
+            addUsbItems();
+        } else if (!usbDevices.isEmpty()) {
+            showSourcesDialog(mSourceSwitchButton.getAppBarButton());
+        }
+    }
+
+    private void showSourcesDialog(View view) {
+        DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
+                getActivity().getTheme()));
+        DropdownDialog.setDefaultTextColor(Color.BLACK);
+        // TODO refresh sources list
+        mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.VERTICAL);
+        mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
+                getActivity().getTheme()));
+        mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
+        mSourceIconMap.entrySet().forEach(
+                e -> mDropdownDialog.addDropdownItem(
+                        new DropdownItem(e.getKey(), e.getKey() + " source", e.getValue())
+                )
+        );
+        addUsbItems();
+        //Set listener for action item clicked
+        mDropdownDialog.setOnActionItemClickListener(this);
+
+        mDropdownDialog.setOnDismissListener((OnDismissListener) this::onCloseSourceDialog);
+        mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
+    }
+
+    private void addUsbItems() {
+        mUsbDropdownItems.clear();
+        if (mDropdownDialog != null && mUsbStateService != null) {
+            List<UsbDevice> usbDevices = mUsbStateService.getUsbDevices();
+            usbDevices.forEach(usbDevice -> {
+                DropdownItem dropdownItem = new DropdownItem(usbDevice.getDeviceId(), usbDevice.getName(),
+                        R.drawable.psa_media_source_usb);
+                mDropdownDialog.addDropdownItem(dropdownItem);
+                mUsbDropdownItems.add(dropdownItem);
+            });
+        }
+    }
+
+    private void onCloseSourceDialog() {
+        mDropdownDialog = null;
+    }
+
+    @Override
+    public void onItemClick(DropdownItem item) {
+        onCloseSourceDialog();
+        //here we can filter which action item was clicked with pos or actionId parameter
+        String title = item.getTitle();
+        PSAToast.makeText(getContext(), title + " selected", Toast.LENGTH_SHORT).show();
+        mSourceId = item.getId();
+
+        if (mSourceIconMap.containsKey(mSourceId)) {
+            ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
+                    ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme()));
+        }
+        if (BLUETOOTH_SOURCE_ID.equals(mSourceId)) {
+            startPlayerService(BLUETOOTH_PACKAGE_NAME,
+                    BLUETOOTH_CLASS_NAME);
+            return;
+        } else {
+            startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
+                    CARLOCALMEDIAPLAYER_CLASS_NAME);
+        }
+
+        if (!getGrantedPermissions(CARLOCALMEDIAPLAYER_PACKAGE_NAME).contains(Manifest.permission.READ_EXTERNAL_STORAGE)
+                && !BLUETOOTH_SOURCE_ID.equals(mSourceId)) {
+            Log.w(TAG, "Permissiont not granted");
+            return;
+        }
+
+        UsbDevice usbDevice = mUsbStateService.getUsbDeviceByDeviceId(mSourceId);
+        if (usbDevice != null) {
+            ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
+                    ResourcesCompat.getDrawable(getResources(), R.drawable.psa_media_source_usb, getActivity().getTheme())
+            );
+            final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+            if (controls != null) {
+                controls.stop();
+            }
+            Bundle extras = new Bundle();
+            extras.putStringArray("PATH", usbDevice.getVolumePaths());
+            mMediaPlaybackModel.getMediaBrowser().subscribe("__USB__", extras, new MediaBrowser.SubscriptionCallback() {
+                @Override
+                public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children, Bundle options) {
+                    if (controls != null && !children.isEmpty()) {
+                        MediaBrowser.MediaItem mediaItem = children.get(0);
+                        controls.playFromMediaId(mediaItem.getMediaId(), mediaItem.getDescription().getExtras());
+                    }
+                }
+            });
+        } else {
+            selectFoldersAsMediaSource();
+        }
+    }
+
+    private void selectFoldersAsMediaSource() {
+        /***** Temporary *****/
+        mSourceId = "5";
+        ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
+                ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), getActivity().getTheme())
+        );
+        mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {
+            @Override
+            public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
+                Log.d(TAG, "onChildrenLoaded " + parentId);
+                if (children.size() > 0) {
+                    MediaBrowser.MediaItem itemM = children.get(0);
+                    for (MediaBrowser.MediaItem item : children) {
+                        itemM = item;
+                        if (item.getDescription().getTitle().equals("music")) {
+                            break;
+                        }
+                    }
+
+                    mMediaPlaybackModel.getMediaBrowser().subscribe(itemM.getMediaId(), new MediaBrowser.SubscriptionCallback() {
+                        @Override
+                        public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
+                            Log.d(TAG, "onChildrenLoaded " + parentId);
+                            if (children.size() > 0) {
+                                MediaBrowser.MediaItem itemM = children.get(0);
+
+                                MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+                                if (controls != null) {
+                                    controls.pause();
+                                    controls.playFromMediaId(itemM.getMediaId(), itemM.getDescription().getExtras());
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onError(String parentId) {
+                            Log.e(TAG, "Error loading children of " + parentId);
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String parentId) {
+                Log.e(TAG, "Error loading children of " + parentId);
+            }
+        });
+        /***** Temporary *****/
     }
 }
