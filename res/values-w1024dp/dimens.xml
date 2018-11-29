@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Copyright 2016, The Android Open Source Project
 
   Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,19 +22,7 @@
     <dimen name="music_action_ripple_inset">32dp</dimen>
 
     <!-- action card -->
-    <dimen name="metadata_width">720dp</dimen>
     <dimen name="metadata_inter_line_space">8dp</dimen>
-
-    <dimen name="music_panel_elevation">2dp</dimen>
-
-    <dimen name="play_pause_elevation">6dp</dimen>
-
-    <dimen name="controls_tap_target_width">188dp</dimen>
     <dimen name="controls_tap_target_height">128dp</dimen>
 
-    <dimen name="overflow_margin">46dp</dimen>
-    <dimen name="overflow_spacing_outer">49dp</dimen>
-    <dimen name="overflow_spacing_inner">48dp</dimen>
-
-    <dimen name="seek_bar_height">8dp</dimen>
 </resources>

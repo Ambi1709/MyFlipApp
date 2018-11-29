@@ -400,7 +400,11 @@ public class MediaPlaybackModel {
                 mPrimaryColorDark = manager.getMediaClientPrimaryColorDark();
 
                 final ComponentName currentName = mCurrentComponentName;
-                notifyListeners((listener) -> {if(listener != null){listener.onMediaAppChanged(currentName, name);}});
+                notifyListeners((listener) -> {
+                    if (listener != null) {
+                        listener.onMediaAppChanged(currentName, name);
+                    }
+                });
                 mCurrentComponentName = name;
             });
         }
@@ -531,9 +535,10 @@ public class MediaPlaybackModel {
     public void playItemAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
+            Log.d(TAG, "Play item action " + itemId);
             setShuffleState(SHUFFLE_OFF_STATE);
             Bundle extras = new Bundle(itemExtras);
-            if(extras == null){
+            if (extras == null) {
                 extras = new Bundle();
             }
             extras.putInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY, itemType);
@@ -546,8 +551,9 @@ public class MediaPlaybackModel {
     public void addItemToQueueTopAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
+            Log.d(TAG, "Add item next to playlist " + itemId);
             Bundle extras = new Bundle(itemExtras);
-            if(extras == null){
+            if (extras == null) {
                 extras = new Bundle();
             }
             extras.putBoolean(ADD_TOP_KEY, true);
@@ -560,8 +566,9 @@ public class MediaPlaybackModel {
     public void addItemToQueueBottomAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
+            Log.d(TAG, "Add item to bottom of playlist " + itemId);
             Bundle extras = new Bundle(itemExtras);
-            if(extras == null){
+            if (extras == null) {
                 extras = new Bundle();
             }
             extras.putBoolean(ADD_BOTTOM_KEY, true);
@@ -574,9 +581,10 @@ public class MediaPlaybackModel {
     public void shufflePlayItemAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
+            Log.d(TAG, "Shuffle play category action " + itemId);
             setShuffleState(SHUFFLE_OFF_STATE);
             Bundle extras = new Bundle(itemExtras);
-            if(extras == null){
+            if (extras == null) {
                 extras = new Bundle();
             }
             extras.putInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY, itemType);

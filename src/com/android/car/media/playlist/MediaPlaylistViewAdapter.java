@@ -3,6 +3,7 @@ package com.android.car.media;
 import android.content.Context;
 import android.media.MediaDescription;
 import android.media.session.MediaSession;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -16,6 +17,8 @@ import java.util.List;
 public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final String TAG = "MediaPlaylistViewAdapter";
+
+    static final String ITEM_AVAILABLE_KEY = "ITEM_AVAILABLE_KEY";
 
     List<MediaSession.QueueItem> mQueueList;
     long mCurrentQueueId;
@@ -72,6 +75,10 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 .setAction1ViewType(ItemData.ACTION_VIEW_TYPE_IMAGEVIEW);
         if (mCurrentQueueId == queueItem.getQueueId()) {
             builder.setSelected(true);
+        }
+        Bundle extras = itemDescription.getExtras();
+        if (extras != null) {
+            builder.setEnabled(extras.getBoolean(ITEM_AVAILABLE_KEY, true));
         }
 
         ItemData value = builder.build();

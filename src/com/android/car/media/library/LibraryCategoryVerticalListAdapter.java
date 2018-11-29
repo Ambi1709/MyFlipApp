@@ -8,6 +8,7 @@ import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.util.Log;
 
 import com.harman.psa.widget.dropdowns.DropdownDialog;
 import com.harman.psa.widget.dropdowns.DropdownHelper;
@@ -27,6 +28,7 @@ import java.util.Map;
 
 
 public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+    private static final String TAG = "LibraryCategoryVerticalListAdapter";
 
     public static final String DEFAULT_SECTION = "DEFAULT";
 
@@ -58,6 +60,7 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int viewType) {
+        
         RecyclerView.ViewHolder holder;
         switch (viewType) {
             case SECTION_TYPE:
@@ -66,8 +69,8 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
             case VIEW_SIMPLE_ITEM_TYPE:
                 holder = new SimpleActionViewHolder(viewGroup.getContext());
                 break;
-            default:
             case VIEW_MULTI_ITEM_TYPE:
+            default:
                 holder = new MultiactionViewHolder(viewGroup.getContext());
                 break;
         }
@@ -76,7 +79,6 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder viewHolder, final int viewItemPosition) {
-
         if (viewHolder instanceof PsaViewHolderDataBinder) {
             final ItemData value = (ItemData) getValue(viewItemPosition);
             if (!mShowSubtitles) {

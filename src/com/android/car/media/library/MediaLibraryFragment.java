@@ -90,6 +90,7 @@ public class MediaLibraryFragment extends PSABaseFragment implements
     @Override
     public void onStop() {
         super.onStop();
+        mLibraryController.unsubscribe(mMediaId);
         mLibraryController.removeListener(this);
         if (mListAdapter != null) {
             mListAdapter.dismissDialog();
@@ -251,7 +252,7 @@ public class MediaLibraryFragment extends PSABaseFragment implements
     /* Method to prepare index sections */
     private void prepareSectionsList(List<ItemData> result,
                                      ArrayList<String> keys, HashMap<String,
-                                    List<ItemData>> map) {
+            List<ItemData>> map) {
         TreeSet<String> set = new TreeSet<>();
         for (ItemData item : result) {
             char index = item.getPrimaryText().charAt(0);
@@ -275,7 +276,7 @@ public class MediaLibraryFragment extends PSABaseFragment implements
     }
 
     private boolean checkDiffSubTitles(List<ItemData> items) {
-        if (items.size() == 1) return false;
+        if (items == null || items.size() <= 1) return false;
         boolean result = false;
         String subtitle = items.get(0).getSecondaryText();
         for (ItemData item : items) {

@@ -1,24 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+
+<android.support.v4.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/scroll"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content">
 
-    <com.harman.psa.widget.gridlist.layout.GridListGroup
-        android:id="@+id/library_grid"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_gravity="center_vertical"
-        android:listSelector="#00000000"
-        app:columnCount="4"></com.harman.psa.widget.gridlist.layout.GridListGroup>
-
-    <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/recently_playlist"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:visibility="gone"></FrameLayout>
-</LinearLayout>
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.harman.psa.widget.gridlist.layout.GridListGroup
+            android:id="@+id/library_grid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start|top"
+            android:listSelector="#00000000"
+            app:columnCount="4"></com.harman.psa.widget.gridlist.layout.GridListGroup>
+
+        <TextView
+            android:id="@+id/recently_played_text"
+            style="@style/PsaTextContentPrimary2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start"
+            android:text="@string/library_recently_played_title"
+            android:textColor="?attr/psa_general_major_color1"
+            android:visibility="gone" />
+
+        <com.harman.psa.widget.verticallist.PsaRecyclerView
+            android:id="@+id/recently_playlist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+    </LinearLayout>
+
+</android.support.v4.widget.NestedScrollView>
+
 
 

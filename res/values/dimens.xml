@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Copyright 2016, The Android Open Source Project
 
   Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +24,10 @@
     <dimen name="music_action_ripple_inset">32dp</dimen>
     <dimen name="now_playing_metadata_top_margin">0dp</dimen>
 
+    <dimen name="metadata_inter_line_space">8dp</dimen>
+
     <dimen name="missing_permission_icon_size">208dp</dimen>
 
-    <dimen name="controls_tap_target_width">64dp</dimen>
     <dimen name="controls_tap_target_height">64dp</dimen>
     <dimen name="controls_margin">46dp</dimen>
     <dimen name="controls_spacing_inner">16dp</dimen>
