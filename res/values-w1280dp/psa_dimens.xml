@@ -32,14 +32,4 @@
     <dimen name="psa_media_player_progress_container_padding_top">34px</dimen>
     <dimen name="psa_media_player_progress_time_text_width">96px</dimen>
 
-
-    <!-- !!!!!!! This should be defined in the library -->
-    <!-- Text Content Primary 1-->
-    <dimen name="psa_content_primary_1_text_font_size">46sp</dimen>
-    <dimen name="psa_content_primary_1_text_line_spacing">56sp</dimen>
-    <!-- Text Content Secondary 1-->
-    <dimen name="psa_content_secondary_1_text_font_size">38sp</dimen>
-    <dimen name="psa_content_secondary_1_text_line_spacing">48sp</dimen>
-    <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
-
     </resources>

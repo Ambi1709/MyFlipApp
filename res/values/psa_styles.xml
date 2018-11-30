@@ -53,22 +53,4 @@
         </item>
     </style>
 
-    <!-- !!!!!!! This should be defined in the library -->
-    <style name="PsaTextContentPrimary1" parent="@android:style/TextAppearance">
-        <item name="android:fontStyle">normal</item>
-        <item name="android:fontFamily">@font/psa_general_font_family_digit_light</item>
-        <item name="android:textSize">@dimen/psa_content_primary_1_text_font_size</item>
-        <item name="android:spacing">@dimen/psa_content_primary_1_text_line_spacing</item>
-        <item name="android:background">@color/psa_transparent_color</item>
-    </style>
-
-    <style name="PsaTextContentSecondary1" parent="@android:style/TextAppearance">
-        <item name="android:fontStyle">normal</item>
-        <item name="android:fontFamily">@font/psa_general_font_family_digit_light</item>
-        <item name="android:textSize">@dimen/psa_content_secondary_1_text_font_size</item>
-        <item name="android:spacing">@dimen/psa_content_secondary_1_text_line_spacing</item>
-        <item name="android:background">@color/psa_transparent_color</item>
-    </style>
-    <!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
-
 </resources>

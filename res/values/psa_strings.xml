@@ -26,4 +26,9 @@
     <string name="library_item_play_later">Play Later</string>
     <string name="library_item_play_shuffle">Shuffle Play</string>
     <string name="library_category_play_shuffle">Shuffle Play All Items</string>
+
+    <string name="settings_item_audio_settings">Audio Settings</string>
+    <string name="settings_item_radio_options">Radio Options</string>
+    <string name="settings_item_shared_media">Shared Media</string>
+    <string name="settings_item_streamed_media">Streamed Media</string>
 </resources>

@@ -1,7 +1,6 @@
 package com.android.car.media;
 
 
-import android.Manifest;
 import android.annotation.TargetApi;
 import android.content.pm.PackageManager;
 import android.graphics.PorterDuff;
@@ -12,7 +11,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,8 +18,6 @@ import android.view.ViewGroup;
 import android.util.Log;
 
 import com.android.car.apps.common.util.Assert;
-import com.android.car.media.MediaPlaylistViewAdapter;
-import com.android.car.media.Utils;
 import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseFragment;
 import com.harman.psa.widget.button.OnCycleChangeListener;
@@ -35,7 +31,7 @@ import java.util.List;
 public class MediaPlaylistFragment extends PSABaseFragment
         implements MediaPlaylistViewAdapter.OnItemClickListener {
     private static final String TAG = "PSAMediaPlaylistFragment";
-	private static final int WRITE_PERMISSION_REQUEST_CODE = 10;
+    private static final int WRITE_PERMISSION_REQUEST_CODE = 10;
 
     private PsaRecyclerView mRecyclerView;
     private MediaPlaylistViewAdapter mAdapter;

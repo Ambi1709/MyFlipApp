@@ -76,6 +76,7 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
                 showFragment(new MediaBrowseFragment());
                 break;
             case SETTINGS:
+                showFragment(new MediaSettingsFragment());
                 break;
             default:
                 Log.e(TAG, "Failed to show screen: unknown tab number");
