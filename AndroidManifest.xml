@@ -47,6 +47,7 @@
             android:exported="true"
             android:label="CarMediaApp"
             android:resizeableActivity="true"
+            android:configChanges="screenLayout|screenSize"
             android:supportsPictureInPicture="true"
             android:theme="@style/PSAAppNightTheme">
             <intent-filter>
