@@ -329,21 +329,28 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
                 R.layout.psa_view_source_switch_button,
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_3),
                 false);
-        MediaActivity mediaActivity = (MediaActivity) getActivity();
+       // MediaActivity mediaActivity = (MediaActivity) getActivity();
         mSourceId = getSourceId();
         if (!TextUtils.isEmpty(mSourceId)) {
             int icon = mSourceIconMap.containsKey(mSourceId) ? mSourceIconMap.get(mSourceId) :
                     R.drawable.psa_media_source_usb;
             sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(), icon,
-                    mediaActivity.getTheme()));
+                    mContext.getTheme()));
         } else {
             mSourceId = "5";
             sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(),
-                    mSourceIconMap.get(mSourceId), mediaActivity.getTheme()));
+                    mSourceIconMap.get(mSourceId), mContext.getTheme()));
         }
         mSourceSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_3, sourceSwitchButton);
         getAppBarView().replaceAppBarButton(mSourceSwitchButton);
         sourceSwitchButton.setOnDropdownButtonClickEventListener(mSourceButtonClickListener);
+
+
+        onMetadataChanged(mMediaPlaybackModel.getMetadata());
+        onQueueChanged(mMediaPlaybackModel.getQueue());
+        onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
+        // Note: at registration, TelephonyManager will invoke the callback with the current state.
+        mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
     }
 
     private void setupMediaButtons(View parentView) {
@@ -399,15 +406,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mReturnFromOnStop = true;
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        onMetadataChanged(mMediaPlaybackModel.getMetadata());
-        onQueueChanged(mMediaPlaybackModel.getQueue());
-        onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
-        // Note: at registration, TelephonyManager will invoke the callback with the current state.
-        mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
-    }
 
     @Override
     public void onMediaAppChanged(@Nullable ComponentName currentName,
@@ -1186,12 +1184,12 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
     private void showSourcesDialog(View view) {
         DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
-                getActivity().getTheme()));
+                mContext.getTheme()));
         DropdownDialog.setDefaultTextColor(Color.BLACK);
         // TODO refresh sources list
-        mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.VERTICAL);
+        mDropdownDialog = new DropdownDialog(mContext, DropdownDialog.VERTICAL);
         mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
-                getActivity().getTheme()));
+                mContext.getTheme()));
         mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
         mSourceIconMap.entrySet().forEach(
                 e -> mDropdownDialog.addDropdownItem(
@@ -1253,7 +1251,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         UsbDevice usbDevice = mUsbStateService.getUsbDeviceByDeviceId(mSourceId);
         if (usbDevice != null) {
             ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
-                    ResourcesCompat.getDrawable(getResources(), R.drawable.psa_media_source_usb, getActivity().getTheme())
+                    ResourcesCompat.getDrawable(getResources(), R.drawable.psa_media_source_usb, mContext.getTheme())
             );
             final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
             if (controls != null) {
@@ -1279,7 +1277,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         /***** Temporary *****/
         mSourceId = "5";
         ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
-                ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), getActivity().getTheme())
+                ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme())
         );
         mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {
             @Override

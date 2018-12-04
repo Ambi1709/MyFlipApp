@@ -139,6 +139,7 @@ public class MediaActivity extends PSABaseActivity {
                 R.layout.psa_view_radio_open_button,
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_2),
                 false);
+        mRadioSwitchButton.setEnabled(false);
         mRadioSwitchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -149,6 +150,7 @@ public class MediaActivity extends PSABaseActivity {
                 R.layout.psa_view_media_open_button,
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_2),
                 false);
+        mMediaSwitchButton.setEnabled(false);
         mMediaSwitchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

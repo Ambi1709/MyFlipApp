@@ -92,7 +92,7 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
         super.onCreate(savedInstanceState);
         mContext = getContext();
         mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
-        mMediaLibraryController = new MediaLibraryController(mMediaPlaybackModel, this);
+        mMediaLibraryController = new MediaLibraryController(mMediaPlaybackModel);
     }
 
     @Override
@@ -137,6 +137,8 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        mMediaLibraryController.addListener(this);
 
         DropdownButton sourceSwitchButton = (DropdownButton) LayoutInflater.from(getContext()).inflate(
                 R.layout.psa_view_source_switch_button,

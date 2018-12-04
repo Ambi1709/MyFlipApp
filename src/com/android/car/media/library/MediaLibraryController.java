@@ -55,9 +55,10 @@ public class MediaLibraryController {
     private String mActiveCategory;
     private String mCurrentCategory;
 
-    private MediaBrowser.MediaItem mLastPlayedListItem;
+    private MediaBrowser.MediaItem mLastPlayedListItem = null;
 
     private List<ItemData> mItemsList = new ArrayList<>();
+
     private boolean mShowSections = false;
 
     interface ItemsUpdatedCallback {
@@ -66,10 +67,9 @@ public class MediaLibraryController {
         void onRootItemsUpdated(List<LibraryCategoryGridItemData> result);
     }
 
-    public MediaLibraryController(MediaPlaybackModel model, ItemsUpdatedCallback listener) {
+    public MediaLibraryController(MediaPlaybackModel model) {
         mMediaPlaybackModel = model;
         mMediaPlaybackModel.addListener(mModelListener);
-        addListener(listener);
     }
 
     @MainThread
@@ -102,12 +102,12 @@ public class MediaLibraryController {
             browser.subscribe(parentId, new MediaBrowser.SubscriptionCallback() {
                 @Override
                 public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
-                    Log.d(TAG, "onChildrenLoaded " + parentId);
+                    Log.d(TAG, "onChildrenLoaded " + parentId + " size " + children.size());
                     if (children.size() > 0) {
+                        List<ItemData> result = new ArrayList<>();
                         mShowSections = false;
                         List<Boolean> showSections = new LinkedList<>();
                         showSections.add(mShowSections);
-                        List<ItemData> result = new ArrayList<>();
                         for (MediaBrowser.MediaItem item : children) {
                             ItemData.Builder builder = new ItemData.Builder()
                                     .setId(item.getMediaId())
@@ -210,7 +210,7 @@ public class MediaLibraryController {
     public void unsubscribe(String parentId) {
         Log.d(TAG, "Unsubscribe " + parentId);
         MediaBrowser browser = mMediaPlaybackModel.getMediaBrowser();
-        if (browser != null) {
+        if (browser != null && browser.isConnected()) {
             browser.unsubscribe(parentId);
         }
     }
@@ -218,7 +218,7 @@ public class MediaLibraryController {
     public void unsubscribe() {
         Log.d(TAG, "Unsubscribe root");
         MediaBrowser browser = mMediaPlaybackModel.getMediaBrowser();
-        if (browser != null) {
+        if (browser != null && browser.isConnected()) {
             browser.unsubscribe(browser.getRoot());
             if (mLastPlayedListItem != null) {
                 Log.d(TAG, "Unsubscribe last played list changes.");
@@ -329,5 +329,4 @@ public class MediaLibraryController {
                     }
                 }
             };
-
 }
