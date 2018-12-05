@@ -67,7 +67,7 @@ public class PSAUsbStateService extends Service {
                 @Override
                 public void onVolumeRecordChanged(VolumeRecord rec) {
                     VolumeInfo vol = storageManager.findVolumeById(rec.fsUuid);
-                    if (vol != null ) {
+                    if (vol != null) {
                         PSAUsbStateService.this.handleUsbState(vol);
                     }
                 }

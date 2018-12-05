@@ -5,15 +5,17 @@ import android.media.browse.MediaBrowser;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.android.car.media.LibraryCategoryVerticalListAdapter;
-import com.android.car.media.MediaLibraryController;
-import com.harman.psa.widget.PSABaseFragment;
+import com.android.car.usb.PSAUsbStateService;
+import com.android.car.usb.UsbDevice;
+import com.android.car.usb.UsbVolume;
 import com.harman.psa.widget.verticallist.model.ItemData;
 
 import java.util.ArrayList;
@@ -21,11 +23,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.TreeSet;
 
+import static com.android.car.media.MediaLibraryController.FOLDERS_ID;
+import static com.android.car.media.MediaLibraryController.MEDIA_ITEM_TYPE_KEY;
 
-public class MediaLibraryFragment extends PSABaseFragment implements
+import java.io.File;
+
+public class MediaLibraryFragment extends MediaBaseFragment implements
         LibraryCategoryGridListAdapter.LibraryCategoryGridListItemClickListener,
         LibraryCategoryVerticalListAdapter.OnItemClickListener,
-        MediaLibraryController.ItemsUpdatedCallback {
+        MediaLibraryController.ItemsUpdatedCallback, PSAUsbStateService.UsbDeviceStateListener {
 
     private static final String TAG = "MediaLibraryFragment";
 
@@ -39,6 +45,14 @@ public class MediaLibraryFragment extends PSABaseFragment implements
 
     public static final String FRAGMENT_TYPE_GRID = "grid";
     public static final String FRAGMENT_TYPE_LIST = "list";
+
+    public static final String FRAGMENT_TYPE_USB_SOURCES = "usbSources";
+
+    private static final String USB_DEVICE_ID = "usbDeviceId";
+
+    private static final String IS_USB_DEVICE_ROOT = "isUsbDeviceRoot";
+
+    public static final String IS_USB_DEVICE_BROWSING = "isUsbDeviceBrowsing";
 
     private String mFragmentType = FRAGMENT_TYPE_LIST;
     private String mHeaderTitle = "";
@@ -55,6 +69,14 @@ public class MediaLibraryFragment extends PSABaseFragment implements
 
     private TextView mSubtitleView;
     private ItemData mShuffleActionItemData;
+
+    private PSAUsbStateService mUsbStateService;
+
+    private String mUsbSourceId;
+
+    private boolean mIsUsbDeviceRoot;
+
+    private boolean mIsUsbDeviceBrowsing;
 
     private MediaLibraryFragment(MediaLibraryController controller) {
         mLibraryController = controller;
@@ -76,6 +98,8 @@ public class MediaLibraryFragment extends PSABaseFragment implements
         mFragmentType = getArguments().getString(FRAGMENT_TYPE_KEY);
         mMediaId = getArguments().getString(MEDIA_ID_KEY);
         mRootCategoryId = getArguments().getString(ROOT_CATEGORY_ID_KEY);
+        mIsUsbDeviceRoot = getArguments().getBoolean(IS_USB_DEVICE_ROOT, false);
+        mIsUsbDeviceBrowsing = getArguments().getBoolean(IS_USB_DEVICE_BROWSING, false);
         if (mFragmentType.equals(FRAGMENT_TYPE_GRID)) {
             v = inflater.inflate(R.layout.psa_media_library_category_grid_fragment, container, false);
             setUpGridListView(v);
@@ -84,6 +108,7 @@ public class MediaLibraryFragment extends PSABaseFragment implements
             setUpVerticalListView(v);
         }
         mSubtitleView = (TextView) v.findViewById(R.id.category_subtitle);
+        mUsbSourceId = getSourceId();
         return v;
     }
 
@@ -92,6 +117,9 @@ public class MediaLibraryFragment extends PSABaseFragment implements
         super.onStop();
         mLibraryController.unsubscribe(mMediaId);
         mLibraryController.removeListener(this);
+        if (!FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
+            mLibraryController.removeListener(this);
+        }
         if (mListAdapter != null) {
             mListAdapter.dismissDialog();
         }
@@ -100,7 +128,9 @@ public class MediaLibraryFragment extends PSABaseFragment implements
     @Override
     public void onStart() {
         super.onStart();
-        mLibraryController.addListener(this);
+        if (!FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
+            mLibraryController.addListener(this);
+        }
     }
 
 
@@ -152,7 +182,11 @@ public class MediaLibraryFragment extends PSABaseFragment implements
 
         mRecyclerView = v.findViewById(R.id.list);
         mRecyclerView.setHasFixedSize(true);
-        mLibraryController.getChildrenElements(mMediaId);
+        if (mIsUsbDeviceBrowsing && !mIsUsbDeviceRoot) {
+            mLibraryController.getFolderContent(mMediaId);
+        } else if (!mIsUsbDeviceRoot) {
+            mLibraryController.getChildrenElements(mMediaId);
+        }
 
         mListAdapter = new LibraryCategoryVerticalListAdapter(this);
         ArrayList<String> keys = new ArrayList<String>();
@@ -178,11 +212,14 @@ public class MediaLibraryFragment extends PSABaseFragment implements
                             extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
                                     getContext().getResources().getString(R.string.library_category_play_shuffle)));
                 }
+                fragmentExtra.putString(USB_DEVICE_ID, mUsbSourceId);
                 fragmentExtra.putString(LIST_HEADER_KEY, data.getPrimaryText());
                 fragmentExtra.putString(LIST_SUBTITLE_KEY, data.getSecondaryText());
                 fragmentExtra.putString(FRAGMENT_TYPE_KEY, MediaLibraryFragment.FRAGMENT_TYPE_LIST);
                 fragmentExtra.putString(MEDIA_ID_KEY, data.getId());
                 fragmentExtra.putString(ROOT_CATEGORY_ID_KEY, mRootCategoryId);
+                fragmentExtra.putBoolean(IS_USB_DEVICE_ROOT, extras.getBoolean(IS_USB_DEVICE_ROOT, false));
+                fragmentExtra.putBoolean(IS_USB_DEVICE_BROWSING, mIsUsbDeviceBrowsing);
                 getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(mLibraryController, fragmentExtra));
             } else {
                 mLibraryController.playMediaItem(data);
@@ -288,4 +325,96 @@ public class MediaLibraryFragment extends PSABaseFragment implements
         return result;
     }
 
+    @Override
+    void onUsbServiceReady(PSAUsbStateService usbNotificationService) {
+        mUsbStateService = usbNotificationService;
+        mUsbStateService.setUsbDeviceStateListener(this);
+        if (FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
+            showUsbDevices(mUsbStateService.getUsbDevices());
+        } else if (mIsUsbDeviceRoot) {
+            showUsbVolumes(mUsbStateService.getUsbDeviceByDeviceId(mMediaId));
+        }
+    }
+
+    @Override
+    public void onUsbDeviceStateChanged() {
+        if (FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
+            showUsbDevices(mUsbStateService.getUsbDevices());
+        } else if (!TextUtils.isEmpty(mUsbSourceId)) {
+            List<UsbDevice> usbDevices = mUsbStateService.getUsbDevices();
+            boolean isDeviceMounted = false;
+            for (UsbDevice usbDevice : usbDevices) {
+                if (usbDevice.getDeviceId().equals(mUsbSourceId)) {
+                    isDeviceMounted = true;
+                    break;
+                }
+            }
+            if (!isDeviceMounted) {
+                FragmentManager fm = getFragmentManager();
+                int count = fm.getBackStackEntryCount();
+                int till = FOLDERS_ID.equals(mRootCategoryId) ? 2 : 1;
+                for (int i = count - 1; i >= till; i--) {
+                    fm.popBackStackImmediate();
+                }
+            }
+        }
+    }
+
+    private void showUsbDevices(List<UsbDevice> usbDevices) {
+        List<ItemData> items = new ArrayList<>();
+        for (int i = 0; i < usbDevices.size(); i++) {
+            UsbDevice usbDevice = usbDevices.get(i);
+            ItemData.Builder builder = new ItemData.Builder()
+                    .setId(usbDevice.getDeviceId())
+                    .setPrimaryText(usbDevice.getName())
+                    .setAction1SelectedResId(R.drawable.psa_media_playlist_active_icon)
+                    .setAction1ViewType(ItemData.ACTION_VIEW_TYPE_IMAGEVIEW)
+                    .setAction2ResId(-2);
+
+            if (i == 0) {
+                builder.setAction1ResId(R.drawable.psa_media_source_usb1);
+            } else if (i == 1) {
+                builder.setAction1ResId(R.drawable.psa_media_source_usb2);
+            } else {
+                builder.setAction1ResId(R.drawable.psa_media_source_usb);
+            }
+
+            ItemData model = builder.build();
+            Bundle extras = new Bundle();
+            extras.putInt(MEDIA_ITEM_TYPE_KEY, MediaBrowser.MediaItem.FLAG_BROWSABLE);
+            extras.putBoolean(IS_USB_DEVICE_ROOT, true);
+            model.setExtras(extras);
+            items.add(model);
+        }
+        onItemsUpdated(items, false);
+    }
+
+    private void showUsbVolumes(UsbDevice usbDevice) {
+        if (usbDevice != null) {
+            if (usbDevice.getVolumes().size() > 1) {
+                List<ItemData> items = new ArrayList<>();
+                for (UsbVolume usbVolume : usbDevice.getVolumes()) {
+                    ItemData.Builder builder = new ItemData.Builder()
+                            .setId(usbVolume.getPath() + File.separator)
+                            .setPrimaryText(usbVolume.getId())
+                            .setAction1ResId(R.drawable.media_library_album_default_art)
+                            .setAction1SelectedResId(R.drawable.psa_media_playlist_active_icon)
+                            .setAction1ViewType(ItemData.ACTION_VIEW_TYPE_IMAGEVIEW)
+                            .setAction2ResId(-2);
+                    builder.setSecondaryText(usbVolume.getDescr());
+                    ItemData model = builder.build();
+                    Bundle extras = new Bundle();
+                    extras.putInt(MEDIA_ITEM_TYPE_KEY, MediaBrowser.MediaItem.FLAG_BROWSABLE);
+                    model.setExtras(extras);
+                    items.add(model);
+                }
+                onItemsUpdated(items, false);
+            } else {
+                mFragmentType = FRAGMENT_TYPE_LIST;
+                mLibraryController.addListener(this);
+                mMediaId = usbDevice.getVolumePaths()[0] + File.separator;
+                mLibraryController.getFolderContent(mMediaId);
+            }
+        }
+    }
 }

@@ -271,6 +271,12 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
             fragmentExtra.putString(MediaLibraryFragment.FRAGMENT_TYPE_KEY, MediaLibraryFragment.FRAGMENT_TYPE_GRID);
             getNavigationManager().showFragment(
                     MediaLibraryFragment.newCategoryInstance(mMediaLibraryController, fragmentExtra));
+        } else if (MediaLibraryController.FOLDERS_ID.equals(data.getItemId())) {
+            fragmentExtra.putString(MediaLibraryFragment.FRAGMENT_TYPE_KEY,
+                    MediaLibraryFragment.FRAGMENT_TYPE_USB_SOURCES);
+            fragmentExtra.putBoolean(MediaLibraryFragment.IS_USB_DEVICE_BROWSING, true);
+            getNavigationManager().showFragment(
+                    MediaLibraryFragment.newCategoryInstance(mMediaLibraryController, fragmentExtra));
         } else {
             if (data.getItemId().equals(MediaLibraryController.ARTISTS_ID)) {
                 /* Shuffle all action is available for artists list*/
