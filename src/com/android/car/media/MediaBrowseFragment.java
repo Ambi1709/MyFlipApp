@@ -180,7 +180,7 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
                 getActivity().getTheme()));
         DropdownDialog.setDefaultTextColor(Color.BLACK);
         if (mDropdownDialog == null) {
-            mDropdownDialog = new DropdownDialog(getActivity().getApplicationContext(), DropdownDialog.HORIZONTAL, DropdownHelper.ItemType.ICON);
+            mDropdownDialog = new DropdownDialog(mContext, DropdownDialog.HORIZONTAL, DropdownHelper.ItemType.ICON);
         } else {
             for (DropdownItem dropdownItem : mDropdownItems) {
                 mDropdownDialog.removeDropdownItem(dropdownItem);

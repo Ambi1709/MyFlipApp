@@ -67,12 +67,13 @@ import com.harman.psa.widget.toast.PSAToast;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.Manifest;
 
 import java.util.ArrayList;
+
+import android.app.ActivityManager;
 
 import static android.content.Context.BIND_AUTO_CREATE;
 
@@ -147,6 +148,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     // out by the time a Bitmap needs to be created to fit in it.
     private static final int DEFAULT_ALBUM_ART_WIDTH = 320;
     private static final int DEFAULT_ALBUM_ART_HEIGHT = 320;
+
+    //It can be more than 1000 if system is very slow.
+    private static final int DELAY_FOR_START_SERVICE_IN_MS = 1000;
 
     private MediaPlaybackModel mMediaPlaybackModel;
     private final Handler mHandler = new Handler();
@@ -329,7 +333,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
                 R.layout.psa_view_source_switch_button,
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_3),
                 false);
-       // MediaActivity mediaActivity = (MediaActivity) getActivity();
+
         mSourceId = getSourceId();
         if (!TextUtils.isEmpty(mSourceId)) {
             int icon = mSourceIconMap.containsKey(mSourceId) ? mSourceIconMap.get(mSourceId) :
@@ -999,6 +1003,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
                 Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
         startActivity(launchIntent);
+        Log.w(TAG, "StartPlayerService intent was sent");
     }
 
     private List<String> getGrantedPermissions(String packageName) {
@@ -1148,10 +1153,12 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
     private void generateSourceIconMap() {
         mSourceIconMap.put(BLUETOOTH_SOURCE_ID, R.drawable.psa_media_source_bluetooth);
-        mSourceIconMap.put("2", R.drawable.psa_media_source_aux);
-        mSourceIconMap.put("3", R.drawable.psa_media_source_ipod);
-        mSourceIconMap.put("4", R.drawable.psa_media_source_disc);
-        mSourceIconMap.put("5", R.drawable.psa_media_source_folder);
+        mSourceIconMap.put("2", R.drawable.psa_media_source_folder);
+        //to be implement in the future
+        //mSourceIconMap.put("2", R.drawable.psa_media_source_aux);
+        //mSourceIconMap.put("3", R.drawable.psa_media_source_ipod);
+        //mSourceIconMap.put("4", R.drawable.psa_media_source_disc);
+        //mSourceIconMap.put("5", R.drawable.psa_media_source_folder);
     }
 
     @Override
@@ -1168,6 +1175,24 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
             if (controls != null) {
                 controls.stop();
+            }
+            if (!isServiceRunning(CARLOCALMEDIAPLAYER_CLASS_NAME, mContext)) {
+                startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
+                        CARLOCALMEDIAPLAYER_CLASS_NAME);
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.i(TAG, "Subcribe with delay");
+                        selectFoldersAsMediaSource();
+                    }
+                }, DELAY_FOR_START_SERVICE_IN_MS);
+                return;
+            }
+
+            if (!getGrantedPermissions(CARLOCALMEDIAPLAYER_PACKAGE_NAME).contains(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    && !BLUETOOTH_SOURCE_ID.equals(mSourceId)) {
+                Log.w(TAG, "Permission is not granted");
+                return;
             }
             selectFoldersAsMediaSource();
         }
@@ -1233,21 +1258,37 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
                     ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme()));
         }
+
         if (BLUETOOTH_SOURCE_ID.equals(mSourceId)) {
             startPlayerService(BLUETOOTH_PACKAGE_NAME,
                     BLUETOOTH_CLASS_NAME);
             return;
         } else {
-            startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
-                    CARLOCALMEDIAPLAYER_CLASS_NAME);
+            if (!isServiceRunning(CARLOCALMEDIAPLAYER_CLASS_NAME, mContext)) {
+                startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
+                        CARLOCALMEDIAPLAYER_CLASS_NAME);
+
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.i(TAG, "Subcribe with delay");
+                        selectFolderOrUSbAction();
+                    }
+                }, DELAY_FOR_START_SERVICE_IN_MS);
+                return;
+            }
         }
 
         if (!getGrantedPermissions(CARLOCALMEDIAPLAYER_PACKAGE_NAME).contains(Manifest.permission.READ_EXTERNAL_STORAGE)
                 && !BLUETOOTH_SOURCE_ID.equals(mSourceId)) {
-            Log.w(TAG, "Permissiont not granted");
+            Log.w(TAG, "Permission is not granted");
             return;
         }
 
+        selectFolderOrUSbAction();
+    }
+
+    private void selectFolderOrUSbAction() {
         UsbDevice usbDevice = mUsbStateService.getUsbDeviceByDeviceId(mSourceId);
         if (usbDevice != null) {
             ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
@@ -1275,7 +1316,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
     private void selectFoldersAsMediaSource() {
         /***** Temporary *****/
-        mSourceId = "5";
         ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
                 ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme())
         );
@@ -1321,5 +1361,19 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             }
         });
         /***** Temporary *****/
+    }
+
+    public boolean isServiceRunning(String serviceClassName, Context context) {
+        ActivityManager manager =
+                (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service :
+                manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClassName.equals(service.service.getClassName())) {
+                Log.i(TAG, "Service is running. Service name: " + serviceClassName);
+                return true;
+            }
+        }
+        Log.i(TAG, "Service is not running");
+        return false;
     }
 }
