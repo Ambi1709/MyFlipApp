@@ -341,7 +341,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(), icon,
                     mContext.getTheme()));
         } else {
-            mSourceId = "5";
+            mSourceId = "2";
             sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(),
                     mSourceIconMap.get(mSourceId), mContext.getTheme()));
         }
