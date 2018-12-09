@@ -105,7 +105,10 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     @Override
     public View onCreateView(LayoutInflater inflater, final ViewGroup container,
                              Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.psa_media_browse_fragment, container, false);
+        View v = getView();
+        if(v == null) {
+            v = inflater.inflate(R.layout.psa_media_browse_fragment, container, false);
+        }
 
         mRecyclerView = v.findViewById(R.id.library_grid);
         mRecyclerView.setHasFixedSize(false);
@@ -347,9 +350,12 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
 
     private void selectFoldersAsMediaSource() {
         /***** Temporary *****/
-        mSourceId = "5";
-        mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__",
-                new MediaBrowser.SubscriptionCallback() {});
+        mSourceId = "2";
+        MediaBrowser browser = mMediaPlaybackModel.getMediaBrowser();
+        if (browser != null && browser.isConnected()) {
+            browser.subscribe("__FOLDERS__",
+                    new MediaBrowser.SubscriptionCallback() {});
+        }
         /***** Temporary *****/
     }
 

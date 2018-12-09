@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.util.Log;
 
 import com.android.car.usb.PSAUsbStateService;
 import com.android.car.usb.UsbDevice;
@@ -92,7 +93,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View v;
+        View v = getView();
         mHeaderTitle = getArguments().getString(LIST_HEADER_KEY);
         mHeaderSubtitle = getArguments().getString(LIST_SUBTITLE_KEY);
         mFragmentType = getArguments().getString(FRAGMENT_TYPE_KEY);
@@ -101,10 +102,10 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         mIsUsbDeviceRoot = getArguments().getBoolean(IS_USB_DEVICE_ROOT, false);
         mIsUsbDeviceBrowsing = getArguments().getBoolean(IS_USB_DEVICE_BROWSING, false);
         if (mFragmentType.equals(FRAGMENT_TYPE_GRID)) {
-            v = inflater.inflate(R.layout.psa_media_library_category_grid_fragment, container, false);
+            if (v == null) {v = inflater.inflate(R.layout.psa_media_library_category_grid_fragment, container, false);}
             setUpGridListView(v);
         } else {
-            v = inflater.inflate(R.layout.psa_media_library_category_list_fragment, container, false);
+            if (v == null ) {v = inflater.inflate(R.layout.psa_media_library_category_list_fragment, container, false);}
             setUpVerticalListView(v);
         }
         mSubtitleView = (TextView) v.findViewById(R.id.category_subtitle);
@@ -157,11 +158,10 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
     public void setUpGridListView(View v) {
         mRecyclerView = v.findViewById(R.id.category_grid);
         mRecyclerView.setHasFixedSize(true);
-        mLibraryController.getChildrenElements(mMediaId);
-
         mAdapter = new LibraryCategoryGridListAdapter(mSubCategoriesList, this);
 
         mRecyclerView.setAdapter(mAdapter);
+        mLibraryController.getChildrenElements(mMediaId);
     }
 
     public void setUpVerticalListView(View v) {
@@ -182,6 +182,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
 
         mRecyclerView = v.findViewById(R.id.list);
         mRecyclerView.setHasFixedSize(true);
+
         if (mIsUsbDeviceBrowsing && !mIsUsbDeviceRoot) {
             mLibraryController.getFolderContent(mMediaId);
         } else if (!mIsUsbDeviceRoot) {
@@ -338,6 +339,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
 
     @Override
     public void onUsbDeviceStateChanged() {
+        Log.d(TAG, "onUsbDeviceStateChanged");
         if (FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
             showUsbDevices(mUsbStateService.getUsbDevices());
         } else if (!TextUtils.isEmpty(mUsbSourceId)) {
@@ -352,9 +354,11 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
             if (!isDeviceMounted) {
                 FragmentManager fm = getFragmentManager();
                 int count = fm.getBackStackEntryCount();
-                int till = FOLDERS_ID.equals(mRootCategoryId) ? 2 : 1;
-                for (int i = count - 1; i >= till; i--) {
-                    fm.popBackStackImmediate();
+                if(FOLDERS_ID.equals(mRootCategoryId)) {
+                    int till = FOLDERS_ID.equals(mRootCategoryId) ? 2 : 1;
+                    for (int i = count - 1; i >= till; i--) {
+                        fm.popBackStackImmediate();
+                    }
                 }
             }
         }

@@ -1319,47 +1319,50 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
                 ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme())
         );
-        mMediaPlaybackModel.getMediaBrowser().subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {
-            @Override
-            public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
-                Log.d(TAG, "onChildrenLoaded " + parentId);
-                if (children.size() > 0) {
-                    MediaBrowser.MediaItem itemM = children.get(0);
-                    for (MediaBrowser.MediaItem item : children) {
-                        itemM = item;
-                        if (item.getDescription().getTitle().equals("music")) {
-                            break;
-                        }
-                    }
-
-                    mMediaPlaybackModel.getMediaBrowser().subscribe(itemM.getMediaId(), new MediaBrowser.SubscriptionCallback() {
-                        @Override
-                        public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
-                            Log.d(TAG, "onChildrenLoaded " + parentId);
-                            if (children.size() > 0) {
-                                MediaBrowser.MediaItem itemM = children.get(0);
-
-                                MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-                                if (controls != null) {
-                                    controls.pause();
-                                    controls.playFromMediaId(itemM.getMediaId(), itemM.getDescription().getExtras());
-                                }
+        MediaBrowser browser = mMediaPlaybackModel.getMediaBrowser();
+        if (browser != null && browser.isConnected()) {
+            browser.subscribe("__FOLDERS__", new MediaBrowser.SubscriptionCallback() {
+                @Override
+                public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
+                    Log.d(TAG, "onChildrenLoaded " + parentId);
+                    if (children.size() > 0) {
+                        MediaBrowser.MediaItem itemM = children.get(0);
+                        for (MediaBrowser.MediaItem item : children) {
+                            itemM = item;
+                            if (item.getDescription().getTitle().equals("music")) {
+                                break;
                             }
                         }
 
-                        @Override
-                        public void onError(String parentId) {
-                            Log.e(TAG, "Error loading children of " + parentId);
-                        }
-                    });
-                }
-            }
+                        browser.subscribe(itemM.getMediaId(), new MediaBrowser.SubscriptionCallback() {
+                            @Override
+                            public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
+                                Log.d(TAG, "onChildrenLoaded " + parentId);
+                                if (children.size() > 0) {
+                                    MediaBrowser.MediaItem itemM = children.get(0);
 
-            @Override
-            public void onError(String parentId) {
-                Log.e(TAG, "Error loading children of " + parentId);
-            }
-        });
+                                    MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+                                    if (controls != null) {
+                                        controls.pause();
+                                        controls.playFromMediaId(itemM.getMediaId(), itemM.getDescription().getExtras());
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onError(String parentId) {
+                                Log.e(TAG, "Error loading children of " + parentId);
+                            }
+                        });
+                    }
+                }
+
+                @Override
+                public void onError(String parentId) {
+                    Log.e(TAG, "Error loading children of " + parentId);
+                }
+            });
+        }
         /***** Temporary *****/
     }
 

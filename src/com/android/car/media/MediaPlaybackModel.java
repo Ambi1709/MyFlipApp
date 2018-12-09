@@ -82,6 +82,8 @@ public class MediaPlaybackModel {
     private PlaybackState.CustomAction mRepeatAction;
     private PlaybackState.CustomAction mShuffleAction;
 
+    private String mActiveCategory = "";
+
     /**
      * This is the interface to listen to {@link MediaPlaybackModel} callbacks. All callbacks are
      * done in the main thread.
@@ -275,6 +277,10 @@ public class MediaPlaybackModel {
         return MediaSession.QueueItem.UNKNOWN_ID;
     }
 
+    public String getActiveCategoryId(){
+        return mActiveCategory;
+    }
+
     @MainThread
     public PlaybackState getPlaybackState() {
         Assert.isMainThread();
@@ -421,6 +427,7 @@ public class MediaPlaybackModel {
             new MediaBrowser.ConnectionCallback() {
                 @Override
                 public void onConnected() {
+                    Log.d(TAG, "onConnected");
                     mHandler.post(() -> {
                         // Existing mController has already been disconnected before we call
                         // MediaBrowser.connect()
@@ -439,6 +446,7 @@ public class MediaPlaybackModel {
 
                 @Override
                 public void onConnectionSuspended() {
+                    Log.d(TAG, "onConnectionSuspended");
                     mHandler.post(() -> {
                         if (Log.isLoggable(TAG, Log.VERBOSE)) {
                             Log.v(TAG, "Media browser service connection suspended."
@@ -450,6 +458,7 @@ public class MediaPlaybackModel {
 
                 @Override
                 public void onConnectionFailed() {
+                    Log.d(TAG, "onConnectionFailed");
                     mHandler.post(() -> {
                         Log.e(TAG, "Media browser service connection FAILED!");
                         // disconnect anyway to make sure we get into a sanity state
@@ -494,6 +503,7 @@ public class MediaPlaybackModel {
 
                 @Override
                 public void onSessionDestroyed() {
+                    Log.e(TAG, "onSessionDestroyed");
                     mHandler.post(() -> {
                         if (Log.isLoggable(TAG, Log.VERBOSE)) {
                             Log.v(TAG, "onSessionDestroyed()");
@@ -536,6 +546,7 @@ public class MediaPlaybackModel {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
             Log.d(TAG, "Play item action " + itemId);
+            mActiveCategory = itemId; // might be playable
             setShuffleState(SHUFFLE_OFF_STATE);
             Bundle extras = new Bundle(itemExtras);
             if (extras == null) {
@@ -545,7 +556,16 @@ public class MediaPlaybackModel {
             extras.putString(MediaLibraryController.ROOT_CATEGORY_ID_KEY, rootCategoryId);
             controls.playFromMediaId(itemId, extras);
         }
+    }
 
+    public void playItem(String itemId, String parentCategoryId, Bundle itemExtras) {
+        Log.d(TAG, "Play media item " + itemId);
+        MediaController.TransportControls controls = getTransportControls();
+        if (controls != null) {
+            mActiveCategory = parentCategoryId;
+            controls.pause();
+            controls.playFromMediaId(itemId, itemExtras);
+        }
     }
 
     public void addItemToQueueTopAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
@@ -582,6 +602,7 @@ public class MediaPlaybackModel {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
             Log.d(TAG, "Shuffle play category action " + itemId);
+            mActiveCategory = itemId; // might be playable
             setShuffleState(SHUFFLE_OFF_STATE);
             Bundle extras = new Bundle(itemExtras);
             if (extras == null) {

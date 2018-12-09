@@ -9,6 +9,7 @@ import android.media.session.PlaybackState;
 import android.os.Bundle;
 import android.support.annotation.MainThread;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.car.apps.common.util.Assert;
@@ -34,6 +35,8 @@ public class MediaLibraryController {
     static final String RECENTLY_PLAYED_ID = "__RECENTLY_PLAYED__";
     static final String FOLDERS_ID = "__FOLDERS__";
 
+    static final String SECONDARY_TEXT_KEY = "SECONDARY_TEXT";
+
     static final String PLAY_ITEM_ACTION_KEY = "PLAY_ITEM";
     static final String PLAY_ITEM_ACTION_TEXT_KEY = "PLAY_ITEM_TEXT";
     static final String ADD_TOP_ACTION_KEY = "ADD_TOP_ACTION";
@@ -51,7 +54,6 @@ public class MediaLibraryController {
     private final List<ItemsUpdatedCallback> mItemsChangedListeners = new LinkedList<>();
 
     private String mRootCategory;
-    private String mActiveCategory;
     private String mCurrentCategory;
 
     private MediaBrowser.MediaItem mLastPlayedListItem = null;
@@ -149,13 +151,16 @@ public class MediaLibraryController {
                             .setAction1ResId(R.drawable.media_library_album_default_art)
                             .setAction1SelectedResId(R.drawable.psa_media_playlist_active_icon)
                             .setAction1ViewType(ItemData.ACTION_VIEW_TYPE_IMAGEVIEW);
-                    if (item.getDescription().getSubtitle() != null) {
+                    Bundle itemExtras = item.getDescription().getExtras();
+                    if (itemExtras != null && !itemExtras.getString(SECONDARY_TEXT_KEY, "").isEmpty()){
+                        builder.setSecondaryText(itemExtras.getString(SECONDARY_TEXT_KEY));
+                    }else if (item.getDescription().getSubtitle() != null) {
                         builder.setSecondaryText(item.getDescription().getSubtitle().toString());
                     }
                     if (isActiveItem(item.getMediaId())) {
                         builder.setSelected(true);
                     }
-                    Bundle itemExtras = item.getDescription().getExtras();
+                    
                     if (itemExtras != null &&
                             itemExtras.getBoolean(MediaLibraryController.PLAY_ITEM_ACTION_KEY, false) == true) {
                         builder.setAction2ResId(R.drawable.psa_media_library_item_action_icon);
@@ -262,20 +267,14 @@ public class MediaLibraryController {
     @Nullable
     public String getVariousSubtitle(Context context) {
         String result = null;
-        if (mRootCategory != null && mRootCategory.equals(ALBUMS_ID)) {
+        if (mRootCategory != null && ALBUMS_ID.equals(mRootCategory)) {
             result = context.getResources().getString(R.string.various_artists);
         }
         return result;
     }
 
     public void playMediaItem(ItemData data) {
-        Log.d(TAG, "Play media item " + data.getId());
-        MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-        if (controls != null) {
-            mActiveCategory = mCurrentCategory;
-            controls.pause();
-            controls.playFromMediaId(data.getId(), data.getExtras());
-        }
+        mMediaPlaybackModel.playItem(data.getId(), mCurrentCategory ,data.getExtras());
     }
 
     public void fireAction(ItemData data, int action, String rootCategoryId) {
@@ -288,7 +287,6 @@ public class MediaLibraryController {
         extras.putBoolean(MAKE_NEW_QUEUE_KEY, true);
         switch (action) {
             case PLAY_ITEM_ACTION_INDEX:
-                mActiveCategory = data.getId(); // might be playable
                 mMediaPlaybackModel.playItemAction(data.getId(), itemType, rootCategoryId, extras);
                 break;
             case ADD_TOP_ACTION_INDEX:
@@ -298,7 +296,6 @@ public class MediaLibraryController {
                 mMediaPlaybackModel.addItemToQueueBottomAction(data.getId(), itemType, rootCategoryId, extras);
                 break;
             case PLAY_SHUFFLE_ACTION_INDEX:
-                mActiveCategory = data.getId(); // might be playable
                 mMediaPlaybackModel.shufflePlayItemAction(data.getId(), itemType, rootCategoryId, extras);
                 break;
             default:
@@ -308,7 +305,8 @@ public class MediaLibraryController {
 
     private boolean isActiveItem(String mediaId) {
         boolean result = false;
-        if (mActiveCategory != null && mActiveCategory.equals(mediaId)) {
+        String activeCategoryId = mMediaPlaybackModel.getActiveCategoryId();
+        if (!TextUtils.isEmpty(activeCategoryId) && activeCategoryId.equals(mediaId)) {
             result = true;
         } else {
             List<MediaSession.QueueItem> queue = mMediaPlaybackModel.getQueue();
