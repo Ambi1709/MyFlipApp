@@ -110,6 +110,12 @@ public class MediaActivity extends PSABaseActivity {
     }
 
     @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        if (mMediaPlaybackModel != null) {mMediaPlaybackModel.stop();}
+    }
+
+    @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
