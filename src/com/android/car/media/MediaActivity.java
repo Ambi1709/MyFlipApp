@@ -1,9 +1,16 @@
 package com.android.car.media;
 
-import android.content.*;
+import android.annotation.TargetApi;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.media.MediaMetadata;
 import android.media.session.MediaController;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -11,19 +18,18 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Toast;
 
-import com.android.car.usb.PSAUsbStateService;
-import com.android.car.usb.UsbDevice;
+import com.android.car.media.widget.MediaWidget1x1;
+import com.android.car.media.widget.SubFragment;
 import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseActivity;
 import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
 import com.harman.psa.widget.toast.PSAToast;
 
-import java.util.LinkedList;
 import java.util.List;
 
 
-public class MediaActivity extends PSABaseActivity {
+public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel.Listener {
 
     private static final String TAG = "MediaPlayerActivity";
 
@@ -51,6 +57,7 @@ public class MediaActivity extends PSABaseActivity {
     private PSAAppBarButton mAppSwitchButton;
     private View mRadioSwitchButton;
     private View mMediaSwitchButton;
+    private Bundle mWidgetExtra;
 
     private final MediaManager.Listener mListener = new MediaManager.Listener() {
         @Override
@@ -83,9 +90,13 @@ public class MediaActivity extends PSABaseActivity {
         mNavigationManager.showActiveApp();
 
         if (mMediaPlaybackModel == null) {
-            mMediaPlaybackModel = new MediaPlaybackModel(MediaActivity.this, null /* browserExtras */);
+            mMediaPlaybackModel = new MediaPlaybackModel(MediaActivity.this, null /*
+            browserExtras */);
         }
+
         mMediaPlaybackModel.start();
+
+        mMediaPlaybackModel.addListener(this);
 
         if (mActiveApp == MediaConstants.MEDIA_APP) {
             Intent i = new Intent(ACTION_MEDIA_APP_STATE_CHANGE);
@@ -107,13 +118,16 @@ public class MediaActivity extends PSABaseActivity {
             i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, false);
             sendBroadcast(i);
         }
+
+        mMediaPlaybackModel.removeListener(this);
     }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mSharedPrefs = getApplicationContext().getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
+        mSharedPrefs = getApplicationContext().getSharedPreferences(SHARED_PREFS_NAME, Context
+                .MODE_PRIVATE);
         mActiveApp = mSharedPrefs.getInt(LAST_ACTIVE_APP, MediaConstants.MEDIA_APP);
 
         /* Open Tab bar button */
@@ -163,12 +177,14 @@ public class MediaActivity extends PSABaseActivity {
                 R.layout.psa_view_media_search_button,
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_4),
                 false);
-        mMediaSearchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_4, mediaSearchButton);
+        mMediaSearchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_4,
+                mediaSearchButton);
         getAppBarView().replaceAppBarButton(mMediaSearchButton);
         mediaSearchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                PSAToast.makeText(MediaActivity.this, "To be Implemented", Toast.LENGTH_SHORT).show();
+                PSAToast.makeText(MediaActivity.this, "To be Implemented", Toast.LENGTH_SHORT)
+                        .show();
             }
         });
 
@@ -303,14 +319,77 @@ public class MediaActivity extends PSABaseActivity {
 
     private void setAppBarButtonsForActiveApp() {
         if (mActiveApp == MediaConstants.RADIO_APP) {
-            mAppSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_2, mMediaSwitchButton);
+            mAppSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_2,
+                    mMediaSwitchButton);
         } else {
-            mAppSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_2, mRadioSwitchButton);
+            mAppSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_2,
+                    mRadioSwitchButton);
         }
         getAppBarView().replaceAppBarButton(mAppSwitchButton);
     }
 
     public MediaPlaybackModel getPlaybackModel() {
         return mMediaPlaybackModel;
+    }
+
+    @Override
+    public void onMediaConnected() {
+
+        Intent intent = getIntent();
+        Bundle bundle = null;
+        if (intent != null) {
+            bundle = intent.getBundleExtra(MediaWidget1x1.PLAY_FROM_WIDGET);
+        }
+        if (bundle != null) {
+            MediaController.TransportControls transportControls =
+                    mMediaPlaybackModel.getTransportControls();
+            transportControls.playFromMediaId(bundle.getString(SubFragment.ITEM_ID),
+                    bundle);
+
+            setIntent(null);
+        }
+
+    }
+
+    @Override
+    public void onMediaAppChanged(@Nullable ComponentName currentName,
+                                  @Nullable ComponentName newName) {
+
+    }
+
+    @Override
+    public void onMediaAppStatusMessageChanged(@Nullable String message) {
+
+    }
+
+
+    @Override
+    public void onMediaConnectionSuspended() {
+
+    }
+
+    @Override
+    public void onMediaConnectionFailed(CharSequence failedClientName) {
+
+    }
+
+    @Override
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP_MR1)
+    public void onPlaybackStateChanged(@Nullable PlaybackState state) {
+
+    }
+
+    @Override
+    public void onMetadataChanged(@Nullable MediaMetadata metadata) {
+
+    }
+
+    @Override
+    public void onQueueChanged(List<MediaSession.QueueItem> queue) {
+    }
+
+    @Override
+    public void onSessionDestroyed(CharSequence destroyedMediaClientName) {
+
     }
 }

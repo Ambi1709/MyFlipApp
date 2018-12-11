@@ -32,4 +32,6 @@
     <dimen name="psa_media_player_progress_container_padding_top">32px</dimen>
     <dimen name="psa_media_player_progress_time_text_width">96px</dimen>
 
+    <dimen name="psa_tab_weight">320dp</dimen>
+
     </resources>
