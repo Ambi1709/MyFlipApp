@@ -60,6 +60,7 @@ public class MediaPlaybackModel {
 
     private final Context mContext;
     private final Bundle mBrowserExtras;
+
     private final List<MediaPlaybackModel.Listener> mListeners = new LinkedList<>();
 
     private Handler mHandler;
@@ -542,7 +543,8 @@ public class MediaPlaybackModel {
         }
     }
 
-    public void playItemAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
+    public void playItemAction(String itemId, int itemType, String rootCategoryId, Bundle
+            itemExtras) {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
             Log.d(TAG, "Play item action " + itemId);
@@ -568,7 +570,8 @@ public class MediaPlaybackModel {
         }
     }
 
-    public void addItemToQueueTopAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
+    public void addItemToQueueTopAction(String itemId, int itemType, String rootCategoryId,
+                                        Bundle itemExtras) {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
             Log.d(TAG, "Add item next to playlist " + itemId);
@@ -583,7 +586,8 @@ public class MediaPlaybackModel {
         }
     }
 
-    public void addItemToQueueBottomAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
+    public void addItemToQueueBottomAction(String itemId, int itemType, String rootCategoryId,
+                                           Bundle itemExtras) {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
             Log.d(TAG, "Add item to bottom of playlist " + itemId);
@@ -598,7 +602,8 @@ public class MediaPlaybackModel {
         }
     }
 
-    public void shufflePlayItemAction(String itemId, int itemType, String rootCategoryId, Bundle itemExtras) {
+    public void shufflePlayItemAction(String itemId, int itemType, String rootCategoryId, Bundle
+            itemExtras) {
         MediaController.TransportControls controls = getTransportControls();
         if (controls != null) {
             Log.d(TAG, "Shuffle play category action " + itemId);
@@ -621,7 +626,7 @@ public class MediaPlaybackModel {
             return false;
         }
         M3UPlaylistBuilder playlistBuilder = new M3UPlaylistBuilder();
-        for (MediaSession.QueueItem item: queue) {
+        for (MediaSession.QueueItem item : queue) {
             MediaDescription description = item.getDescription();
             Bundle extras = description.getExtras();
             String path = "";

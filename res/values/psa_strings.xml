@@ -33,6 +33,11 @@
     <string name="settings_item_radio_options">Radio Options</string>
     <string name="settings_item_shared_media">Shared Media</string>
     <string name="settings_item_streamed_media">Streamed Media</string>
-    
 
+    <string name="default_media_widget_text">Please click to open media application</string>
+    <string name="permission_denied">Permission denied</string>
+    <string name="no_data">No data</string>
+    <string name="artist">Artist</string>
+    <string name="album">album</string>
+    <string name="song">song</string>
 </resources>

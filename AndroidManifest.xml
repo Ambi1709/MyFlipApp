@@ -19,7 +19,7 @@
     android:sharedUserId="com.android.car.media">
 
     <uses-permission android:name="android.permission.MANAGE_USERS" />
-	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <uses-sdk
         android:minSdkVersion="27"
@@ -53,6 +53,9 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
+                <category android:name="android.intent.category.LAUNCHER" />
+
+                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.INFO" />
                 <category android:name="android.intent.category.APP_MUSIC" />
             </intent-filter>
@@ -62,5 +65,39 @@
             </intent-filter>
         </activity>
         <service android:name="com.android.car.usb.PSAUsbStateService" />
+
+        <receiver
+            android:name=".widget.MediaWidget2x1"
+            android:label="MediaWidget2x1"
+            android:exported="true"
+            android:icon="@drawable/ic_music">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.car.media.localmediaplayer.ACTION_UPDATE_WIDGET_INFO" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/media_widget_2x1" />
+        </receiver>
+
+        <activity android:name=".widget.MediaWidget1x1ConfigureActivity">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widget.MediaWidget1x1"
+            android:label="MediaWidget1x1"
+            android:exported="true"
+            android:icon="@drawable/ic_music">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.car.media.localmediaplayer.ACTION_UPDATE_WIDGET_INFO" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/media_widget_1x1" />
+        </receiver>
     </application>
 </manifest>

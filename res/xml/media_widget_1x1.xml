@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="@dimen/psa_widget_width"
+    android:minHeight="@dimen/psa_widget_height"
+    android:updatePeriodMillis="86400000"
+    android:previewImage="@drawable/ic_music"
+    android:initialKeyguardLayout="@layout/psa_icon_widget"
+    android:initialLayout="@layout/psa_icon_widget"
+    android:configure="com.android.car.media.widget.MediaWidget1x1ConfigureActivity"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />
