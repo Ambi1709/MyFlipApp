@@ -82,6 +82,9 @@ import static android.content.Context.BIND_AUTO_CREATE;
  */
 public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPlaybackModel.Listener,
         PSAUsbStateService.UsbDeviceStateListener, OnDropdownItemClickListener {
+
+    private static final String USB_SOURCE_ID = "usbSourceId";
+
     private static final String TAG = "MediaPlayback";
     private static final String MEDIA_TEMPLATE_COMPONENT = "com.android.car.media";
     private static final String CARLOCALMEDIAPLAYER_PACKAGE_NAME =
@@ -224,6 +227,22 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
     private PSAUsbStateService mUsbStateService;
 
+    private boolean mIsWaitingUsbService = false;
+
+    private boolean mIsWaitingConnection = false;
+
+    private String mMediaId;
+
+    private Bundle mMediaExtras;
+
+    public static MediaPlaybackFragment newInstance(String usbSourceId) {
+        MediaPlaybackFragment mediaPlaybackFragment = new MediaPlaybackFragment();
+        Bundle args = new Bundle();
+        args.putString(USB_SOURCE_ID, usbSourceId);
+        mediaPlaybackFragment.setArguments(args);
+        return mediaPlaybackFragment;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -334,7 +353,20 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_3),
                 false);
 
-        mSourceId = getSourceId();
+        Bundle args = getArguments();
+        if (args != null && args.containsKey(USB_SOURCE_ID)) {
+            mSourceId = args.getString(USB_SOURCE_ID);
+            if (!isServiceRunning(CARLOCALMEDIAPLAYER_CLASS_NAME, mContext)) {
+                startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
+                        CARLOCALMEDIAPLAYER_CLASS_NAME);
+
+                new Handler().postDelayed(this::selectFolderOrUSbAction, DELAY_FOR_START_SERVICE_IN_MS);
+            } else {
+                selectFolderOrUSbAction();
+            }
+        } else {
+            mSourceId = getSourceId();
+        }
         if (!TextUtils.isEmpty(mSourceId)) {
             int icon = mSourceIconMap.containsKey(mSourceId) ? mSourceIconMap.get(mSourceId) :
                     R.drawable.psa_media_source_usb;
@@ -397,6 +429,11 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+    }
+
+    @Override
     public void onPause() {
         super.onPause();
         mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
@@ -445,6 +482,13 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         onQueueChanged(mMediaPlaybackModel.getQueue());
         onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
         mReturnFromOnStop = false;
+        if (mIsWaitingConnection) {
+            MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+            if (controls != null ) {
+                controls.playFromMediaId(mMediaId, mMediaExtras);
+            }
+            mIsWaitingUsbService = false;
+        }
     }
 
     @Override
@@ -1164,11 +1208,17 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     @Override
     void onUsbServiceReady(PSAUsbStateService usbNotificationService) {
         mUsbStateService = usbNotificationService;
-        mUsbStateService.setUsbDeviceStateListener(this);
+        if (isResumed()) {
+            mUsbStateService.setUsbDeviceStateListener(this);
+        }
+        if (mIsWaitingUsbService) {
+            selectFolderOrUSbAction();
+        }
     }
 
     @Override
     public void onUsbDeviceStateChanged() {
+        super.onUsbDeviceStateChanged();
         List<UsbDevice> usbDevices = mUsbStateService.getUsbDevices();
         if (!mSourceIconMap.containsKey(mSourceId)
                 && usbDevices.stream().noneMatch(usbDevice -> usbDevice.getDeviceId().equals(mSourceId))) {
@@ -1179,12 +1229,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             if (!isServiceRunning(CARLOCALMEDIAPLAYER_CLASS_NAME, mContext)) {
                 startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
                         CARLOCALMEDIAPLAYER_CLASS_NAME);
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.i(TAG, "Subcribe with delay");
-                        selectFoldersAsMediaSource();
-                    }
+                new Handler().postDelayed(() -> {
+                    Log.i(TAG, "Subcribe with delay");
+                    selectFoldersAsMediaSource();
                 }, DELAY_FOR_START_SERVICE_IN_MS);
                 return;
             }
@@ -1289,33 +1336,43 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     }
 
     private void selectFolderOrUSbAction() {
-        UsbDevice usbDevice = mUsbStateService.getUsbDeviceByDeviceId(mSourceId);
-        if (usbDevice != null) {
-            ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
-                    ResourcesCompat.getDrawable(getResources(), R.drawable.psa_media_source_usb, mContext.getTheme())
-            );
-            final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-            if (controls != null) {
-                controls.stop();
-            }
-            Bundle extras = new Bundle();
-            extras.putStringArray("PATH", usbDevice.getVolumePaths());
-            mMediaPlaybackModel.getMediaBrowser().subscribe("__USB__", extras, new MediaBrowser.SubscriptionCallback() {
-                @Override
-                public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children, Bundle options) {
-                    if (controls != null && !children.isEmpty()) {
-                        MediaBrowser.MediaItem mediaItem = children.get(0);
-                        controls.playFromMediaId(mediaItem.getMediaId(), mediaItem.getDescription().getExtras());
-                    }
+        if (mUsbStateService != null) {
+            UsbDevice usbDevice = mUsbStateService.getUsbDeviceByDeviceId(mSourceId);
+            if (usbDevice != null) {
+                ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
+                        ResourcesCompat.getDrawable(getResources(), R.drawable.psa_media_source_usb, mContext.getTheme())
+                );
+                MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+                if (controls != null) {
+                    controls.stop();
                 }
-            });
+                Bundle extras = new Bundle();
+                extras.putStringArray("PATH", usbDevice.getVolumePaths());
+                mMediaPlaybackModel.getMediaBrowser().subscribe("__USB__", extras, new MediaBrowser.SubscriptionCallback() {
+                    @Override
+                    public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children, Bundle options) {
+                        MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+                        if (controls != null && !children.isEmpty()) {
+                            MediaBrowser.MediaItem mediaItem = children.get(0);
+                            controls.playFromMediaId(mediaItem.getMediaId(), mediaItem.getDescription().getExtras());
+                        } else if (controls == null && !children.isEmpty()) {
+                            mIsWaitingConnection = true;
+                            mMediaId = children.get(0).getMediaId();
+                            mMediaExtras = children.get(0).getDescription().getExtras();
+                        }
+                    }
+                });
+            } else {
+                selectFoldersAsMediaSource();
+            }
         } else {
-            selectFoldersAsMediaSource();
+            mIsWaitingUsbService = true;
         }
     }
 
     private void selectFoldersAsMediaSource() {
         /***** Temporary *****/
+        mSourceId = "2";
         ((DropdownButton) mSourceSwitchButton.getAppBarButton()).setImageDrawable(
                 ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme())
         );

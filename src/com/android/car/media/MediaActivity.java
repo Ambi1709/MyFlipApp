@@ -26,6 +26,8 @@ import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
 import com.harman.psa.widget.toast.PSAToast;
 
+import com.android.car.usb.PSAUsbStateService;
+
 import java.util.List;
 
 
@@ -298,6 +300,8 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         if (isSearchIntent(intent)) {
             MediaManager.getInstance(this).processSearchIntent(intent);
             setIntent(null);
+        } else if (extras != null && extras.containsKey(PSAUsbStateService.USB_SOURCE_ID)) {
+            mNavigationManager.openPlayerTab(extras.getString(PSAUsbStateService.USB_SOURCE_ID));
         }
     }
 

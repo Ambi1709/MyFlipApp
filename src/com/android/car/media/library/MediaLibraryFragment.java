@@ -339,6 +339,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
 
     @Override
     public void onUsbDeviceStateChanged() {
+        super.onUsbDeviceStateChanged();
         Log.d(TAG, "onUsbDeviceStateChanged");
         if (FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
             showUsbDevices(mUsbStateService.getUsbDevices());

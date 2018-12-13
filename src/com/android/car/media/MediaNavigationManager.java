@@ -132,4 +132,10 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
             }
         }
     }
+
+    public void openPlayerTab(String sourceId) {
+        mActiveApp = MediaConstants.MEDIA_APP;
+        refreshTabLabels();
+        showFragment(MediaPlaybackFragment.newInstance(sourceId));
+    }
 }

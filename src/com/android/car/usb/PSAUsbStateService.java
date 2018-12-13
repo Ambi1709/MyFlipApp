@@ -10,11 +10,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.os.Bundle;
 import android.os.IBinder;
+import android.os.UserHandle;
 import android.os.storage.*;
+import android.util.Log;
 import com.android.car.media.R;
 import android.os.Binder;
 import com.android.car.media.MediaActivity;
+import com.android.internal.messages.nano.SystemMessageProto;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,7 +26,13 @@ import java.util.stream.Collectors;
 
 public class PSAUsbStateService extends Service {
 
+    private static final String TAG = PSAUsbStateService.class.getCanonicalName();
+
+    private static final String CHANNEL_NAME = "pasNotificationChanel";
+
     private static int sLastUsbDeviceId = 5;
+
+    public static final String USB_SOURCE_ID = "usbSourceId";
 
     private final static String NOTIFICATION_CHANNEL_ID = "psaNotificationChannelId";
 
@@ -33,6 +43,11 @@ public class PSAUsbStateService extends Service {
     private Map<String, UsbDevice> mUsbDevices = new HashMap<>();
 
     private UsbDevice mToBeScanned;
+
+    private UsbDevice mUsbDevice;
+
+    private NotificationChannel mChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH);
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -49,6 +64,10 @@ public class PSAUsbStateService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        mChannel.enableLights(true);
+        mChannel.setLightColor(Color.RED);
+        nm.createNotificationChannel(mChannel);
         final StorageManager storageManager = getSystemService(StorageManager.class);
         if (storageManager != null) {
             for (VolumeInfo volumeInfo : storageManager.getVolumes()) {
@@ -68,13 +87,18 @@ public class PSAUsbStateService extends Service {
                 public void onVolumeRecordChanged(VolumeRecord rec) {
                     VolumeInfo vol = storageManager.findVolumeById(rec.fsUuid);
                     if (vol != null) {
-                        PSAUsbStateService.this.handleUsbState(vol);
+                        handleUsbState(vol);
                     }
                 }
 
                 @Override
-                public void onStorageStateChanged(String path, String oldState, String newState) {
-                    super.onStorageStateChanged(path, oldState, newState);
+                public void onDiskScanned(DiskInfo disk, int volumeCount) {
+                    onScanFinished(disk, volumeCount);
+                }
+
+                @Override
+                public void onDiskDestroyed(DiskInfo disk) {
+                    handleDiskDestroyed(disk);
                 }
             });
         }
@@ -95,6 +119,34 @@ public class PSAUsbStateService extends Service {
             mToBeScanned.setScanned(true);
             notify(mToBeScanned);
             mToBeScanned = null;
+        }
+    }
+
+    private void handleDiskDestroyed(DiskInfo disk) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm != null) {
+            nm.cancelAsUser(disk.getId(), SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK,
+                    UserHandle.ALL);
+        }
+    }
+
+    private void onScanFinished(DiskInfo disk, int volumeCount) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm != null) {
+            if (volumeCount == 0 && disk.size > 0) {
+                Notification notify = new Notification.Builder(getApplicationContext(), mChannel.getId())
+                        .setChannelId(NOTIFICATION_CHANNEL_ID).setStyle(new Notification.MediaStyle())
+                        .setContentTitle(getString(R.string.psa_general_notification_title_usb))
+                        .setContentText(getString(R.string.psa_general_notification_content_usb))
+                        .setSmallIcon(R.drawable.psa_general_media_center_picto_style)
+                        .setAutoCancel(true)
+                        .build();
+                nm.notifyAsUser(disk.getId(), SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK,
+                        notify, UserHandle.ALL);
+            } else {
+                nm.cancelAsUser(disk.getId(), SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK,
+                        UserHandle.ALL);
+            }
         }
     }
 
@@ -138,34 +190,45 @@ public class PSAUsbStateService extends Service {
     }
 
     private void notify(UsbDevice usbDevice) {
+        mUsbDevice = usbDevice;
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (mUsbDeviceStateListener == null) {
-            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null && usbDevice != null) {
                 if (usbDevice.isReady()) {
-                    int importance = NotificationManager.IMPORTANCE_HIGH;
-                    NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, "chanelName",
-                            importance);
-                    channel.enableLights(true);
-                    channel.setLightColor(Color.RED);
-                    nm.createNotificationChannel(channel);
-                    Notification notify = new Notification.Builder(getApplicationContext(), channel.getId())
-                            .setChannelId(NOTIFICATION_CHANNEL_ID).setStyle(new Notification.MediaStyle())
-                            .setContentTitle(getString(R.string.psa_general_notification_title))
-                            .setContentText(getString(R.string.psa_general_notification_content, usbDevice.getName()))
-                            .setSmallIcon(R.drawable.psa_general_media_center_picto_style)
-                            .setContentIntent(getPendingIntent()).build();
-                    nm.notify(usbDevice.getId(), notify);
+                    nm.notify(usbDevice.getId(), buildNotification());
                 } else {
                     nm.cancel(usbDevice.getId());
                 }
             }
         } else {
+            if (nm != null && usbDevice != null && !usbDevice.isReady()) {
+                nm.cancel(usbDevice.getId());
+            }
             mUsbDeviceStateListener.onUsbDeviceStateChanged();
         }
     }
 
-    private PendingIntent getPendingIntent() {
+    public void forceNotify() {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm != null && mUsbDevice != null && mUsbDevice.isReady()) {
+            nm.notify(mUsbDevice.getId(), buildNotification());
+        }
+    }
+
+    private Notification buildNotification() {
+        return new Notification.Builder(getApplicationContext(), mChannel.getId())
+                .setChannelId(NOTIFICATION_CHANNEL_ID).setStyle(new Notification.MediaStyle())
+                .setContentTitle(getString(R.string.psa_general_notification_title))
+                .setContentText(getString(R.string.psa_general_notification_content, mUsbDevice.getName()))
+                .setSmallIcon(R.drawable.psa_general_media_center_picto_style)
+                .setContentIntent(getPendingIntent(mUsbDevice.getDeviceId()))
+                .build();
+    }
+
+    private PendingIntent getPendingIntent(String usbSourceId) {
         Intent intent = new Intent(this, MediaActivity.class);
+        intent.putExtra(USB_SOURCE_ID, usbSourceId);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
         return PendingIntent.getActivity(this, 0, intent, 0);
     }
 

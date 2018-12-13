@@ -168,6 +168,7 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
 
     @Override
     public void onUsbDeviceStateChanged() {
+        super.onUsbDeviceStateChanged();
         if (mUsbNotificationService.getUsbDeviceByDeviceId(mSourceId) == null) {
             final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
             if (controls != null) {

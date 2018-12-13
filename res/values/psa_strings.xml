@@ -20,6 +20,8 @@
     <!-- Notification -->
     <string name="psa_general_notification_title">Media Center</string>
     <string name="psa_general_notification_content">%1$s storage is now available in Media Center. Tap to play</string>
+    <string name="psa_general_notification_title_usb">USB</string>
+    <string name="psa_general_notification_content_usb">Over current detected. Unplug this USB device to protect system and device integrity</string>
 
     <string name="library_item_play">Play This Item</string>
     <string name="library_item_play_next">Play Next</string>

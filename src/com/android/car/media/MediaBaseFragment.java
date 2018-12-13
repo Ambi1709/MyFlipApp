@@ -7,6 +7,7 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,7 +22,7 @@ import java.util.List;
 
 import static android.content.Context.BIND_AUTO_CREATE;
 
-public abstract class MediaBaseFragment extends PSABaseFragment {
+public abstract class MediaBaseFragment extends PSABaseFragment implements PSAUsbStateService.UsbDeviceStateListener {
 
     private static final String MEDIA_SOURCE_PREFERENCE = "mediaSourcePreference";
 
@@ -47,15 +48,15 @@ public abstract class MediaBaseFragment extends PSABaseFragment {
     };
 
     @Override
-    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    public void onStart() {
+        super.onStart();
         Intent intent = new Intent(getContext(), PSAUsbStateService.class);
         mIsServiceBound = getContext().bindService(intent, mConnection, BIND_AUTO_CREATE);
     }
 
     @Override
-    public void onDestroyView() {
-        super.onDestroyView();
+    public void onStop() {
+        super.onStop();
         if (mIsServiceBound) {
             mIsServiceBound = false;
             if (mUsbNotificationService != null) {
@@ -64,8 +65,6 @@ public abstract class MediaBaseFragment extends PSABaseFragment {
             getContext().unbindService(mConnection);
         }
     }
-
-    abstract void onUsbServiceReady(PSAUsbStateService usbNotificationService);
 
     protected void saveSourceId(String sourceId) {
         getContext()
@@ -80,4 +79,13 @@ public abstract class MediaBaseFragment extends PSABaseFragment {
                 .getSharedPreferences(MEDIA_SOURCE_PREFERENCE, Context.MODE_PRIVATE)
                 .getString(SOURCE_ID, NO_SOURCE_ID);
     }
+
+    @Override
+    public void onUsbDeviceStateChanged() {
+        if (!isResumed()) {
+            mUsbNotificationService.forceNotify();
+        }
+    }
+
+    abstract void onUsbServiceReady(PSAUsbStateService usbNotificationService);
 }
