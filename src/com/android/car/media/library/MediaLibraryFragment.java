@@ -8,17 +8,18 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.util.Log;
 
 import com.android.car.usb.PSAUsbStateService;
 import com.android.car.usb.UsbDevice;
 import com.android.car.usb.UsbVolume;
 import com.harman.psa.widget.verticallist.model.ItemData;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +27,6 @@ import java.util.TreeSet;
 
 import static com.android.car.media.MediaLibraryController.FOLDERS_ID;
 import static com.android.car.media.MediaLibraryController.MEDIA_ITEM_TYPE_KEY;
-
-import java.io.File;
 
 public class MediaLibraryFragment extends MediaBaseFragment implements
         LibraryCategoryGridListAdapter.LibraryCategoryGridListItemClickListener,
@@ -79,14 +78,33 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
 
     private boolean mIsUsbDeviceBrowsing;
 
-    private MediaLibraryFragment(MediaLibraryController controller) {
-        mLibraryController = controller;
-    }
+    public static MediaLibraryFragment newCategoryInstance(String fragmentType,
+                                                           boolean playShuffleActionAvailable,
+                                                           @Nullable String playShuffleActionText,
+                                                           String headerText,
+                                                           String subtitleText,
+                                                           String mediaId,
+                                                           String rootCategory,
+                                                           boolean isUsbDeviceRoot,
+                                                           boolean isUsbDeviceBrowsing,
+                                                           String usbDeviceId) {
+        MediaLibraryFragment fragment = new MediaLibraryFragment();
 
-    public static MediaLibraryFragment newCategoryInstance(MediaLibraryController controller,
-                                                           Bundle extras) {
-        MediaLibraryFragment fragment = new MediaLibraryFragment(controller);
-        fragment.setArguments(extras);
+        Bundle fragmentExtra = new Bundle();
+        if (playShuffleActionAvailable) {
+            fragmentExtra.putBoolean(PLAY_SHUFFLE_ACTION_AVAILABILITY_KEY, true);
+            fragmentExtra.putString(PLAY_SHUFFLE_ACTION_TEXT_KEY, playShuffleActionText);
+        }
+        fragmentExtra.putString(USB_DEVICE_ID, usbDeviceId);
+        fragmentExtra.putString(LIST_HEADER_KEY, headerText);
+        fragmentExtra.putString(LIST_SUBTITLE_KEY, subtitleText);
+        fragmentExtra.putString(FRAGMENT_TYPE_KEY, fragmentType);
+        fragmentExtra.putString(MEDIA_ID_KEY, mediaId);
+        fragmentExtra.putString(ROOT_CATEGORY_ID_KEY, rootCategory);
+        fragmentExtra.putBoolean(IS_USB_DEVICE_ROOT, isUsbDeviceRoot);
+        fragmentExtra.putBoolean(IS_USB_DEVICE_BROWSING, isUsbDeviceBrowsing);
+
+        fragment.setArguments(fragmentExtra);
         return fragment;
     }
 
@@ -102,11 +120,13 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         mIsUsbDeviceRoot = getArguments().getBoolean(IS_USB_DEVICE_ROOT, false);
         mIsUsbDeviceBrowsing = getArguments().getBoolean(IS_USB_DEVICE_BROWSING, false);
         if (mFragmentType.equals(FRAGMENT_TYPE_GRID)) {
-            if (v == null) {v = inflater.inflate(R.layout.psa_media_library_category_grid_fragment, container, false);}
-            setUpGridListView(v);
+            if (v == null) {
+                v = inflater.inflate(R.layout.psa_media_library_category_grid_fragment, container, false);
+            }
         } else {
-            if (v == null ) {v = inflater.inflate(R.layout.psa_media_library_category_list_fragment, container, false);}
-            setUpVerticalListView(v);
+            if (v == null) {
+                v = inflater.inflate(R.layout.psa_media_library_category_list_fragment, container, false);
+            }
         }
         mSubtitleView = (TextView) v.findViewById(R.id.category_subtitle);
         mUsbSourceId = getSourceId();
@@ -153,6 +173,17 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
             mSubtitleView.setText(mHeaderSubtitle);
         }
 
+    }
+
+    @Override
+    public void onActivityCreated(Bundle bundle) {
+        super.onActivityCreated(bundle);
+        mLibraryController = ((MediaActivity) getHostActivity()).getLibraryController();
+        if (mFragmentType.equals(FRAGMENT_TYPE_GRID)) {
+            setUpGridListView(getView());
+        } else {
+            setUpVerticalListView(getView());
+        }
     }
 
     public void setUpGridListView(View v) {
@@ -206,22 +237,18 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         Bundle extras = data.getExtras();
         if (extras != null) {
             if (extras.getInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY) == MediaBrowser.MediaItem.FLAG_BROWSABLE) {
-                Bundle fragmentExtra = new Bundle();
-                if (extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false) == true) {
-                    fragmentExtra.putBoolean(PLAY_SHUFFLE_ACTION_AVAILABILITY_KEY, true);
-                    fragmentExtra.putString(PLAY_SHUFFLE_ACTION_TEXT_KEY,
-                            extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
-                                    getContext().getResources().getString(R.string.library_category_play_shuffle)));
-                }
-                fragmentExtra.putString(USB_DEVICE_ID, mUsbSourceId);
-                fragmentExtra.putString(LIST_HEADER_KEY, data.getPrimaryText());
-                fragmentExtra.putString(LIST_SUBTITLE_KEY, data.getSecondaryText());
-                fragmentExtra.putString(FRAGMENT_TYPE_KEY, MediaLibraryFragment.FRAGMENT_TYPE_LIST);
-                fragmentExtra.putString(MEDIA_ID_KEY, data.getId());
-                fragmentExtra.putString(ROOT_CATEGORY_ID_KEY, mRootCategoryId);
-                fragmentExtra.putBoolean(IS_USB_DEVICE_ROOT, extras.getBoolean(IS_USB_DEVICE_ROOT, false));
-                fragmentExtra.putBoolean(IS_USB_DEVICE_BROWSING, mIsUsbDeviceBrowsing);
-                getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(mLibraryController, fragmentExtra));
+                getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(
+                        MediaLibraryFragment.FRAGMENT_TYPE_LIST,
+                        extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false),
+                        extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
+                                getContext().getResources().getString(R.string.library_category_play_shuffle)),
+                        data.getPrimaryText(),
+                        data.getSecondaryText(),
+                        data.getId(),
+                        mRootCategoryId,
+                        extras.getBoolean(IS_USB_DEVICE_ROOT, false),
+                        mIsUsbDeviceBrowsing,
+                        mUsbSourceId));
             } else {
                 mLibraryController.playMediaItem(data);
             }

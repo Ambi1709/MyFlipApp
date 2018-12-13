@@ -41,13 +41,18 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
             = "android.intent.action.MEDIA_APP_STATE";
 
     private static final String TAB_VISIBLE_STATE = "tabVisibleState";
+    private static final String SELECTED_TAB_STATE = "selectedTabState";
 
     private static final String SHARED_PREFS_NAME = "com.android.car.media.prefs";
     private static final String LAST_ACTIVE_APP = "LAST_ACTIVE_APP_KEY";
 
+    private static final int TAB_NOT_SELECTED_INDEX = -1;
+
     private static int mActiveApp;
 
     private MediaPlaybackModel mMediaPlaybackModel;
+
+    private MediaLibraryController mLibraryController;
 
     private SharedPreferences mSharedPrefs;
 
@@ -76,30 +81,6 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
     protected void onStart() {
         super.onStart();
 
-        mNavigationManager = new MediaNavigationManager(this, getSupportFragmentManager(),
-                getMainContentContainerId());
-        mNavigationManager.setActiveApp(mActiveApp);
-
-        getTabBarManager().addOnTabChangeListener(mNavigationManager);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().hide();
-        }
-
-        setAppBarButtonsForActiveApp();
-
-        PSATabBarManager tabManager = getTabBarManager();
-        mNavigationManager.formMediaTabBar(tabManager, this);
-        mNavigationManager.showActiveApp();
-
-        if (mMediaPlaybackModel == null) {
-            mMediaPlaybackModel = new MediaPlaybackModel(MediaActivity.this, null /*
-            browserExtras */);
-        }
-
-        mMediaPlaybackModel.start();
-
-        mMediaPlaybackModel.addListener(this);
-
         if (mActiveApp == MediaConstants.MEDIA_APP) {
             Intent i = new Intent(ACTION_MEDIA_APP_STATE_CHANGE);
             i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, true);
@@ -120,19 +101,24 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
             i.putExtra(EXTRA_MEDIA_APP_FOREGROUND, false);
             sendBroadcast(i);
         }
-
-        mMediaPlaybackModel.removeListener(this);
     }
 
     @Override
-    protected void onDestroy(){
+    protected void onDestroy() {
+        if (mMediaPlaybackModel != null) {
+            mMediaPlaybackModel.removeListener(this);
+            mMediaPlaybackModel.stop();
+        }
         super.onDestroy();
-        if (mMediaPlaybackModel != null) {mMediaPlaybackModel.stop();}
     }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (mMediaPlaybackModel == null) {
+            mMediaPlaybackModel = new MediaPlaybackModel(MediaActivity.this, null /* browserExtras */);
+        }
 
         mSharedPrefs = getApplicationContext().getSharedPreferences(SHARED_PREFS_NAME, Context
                 .MODE_PRIVATE);
@@ -196,7 +182,7 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
             }
         });
 
-
+        int lastActiveTab = TAB_NOT_SELECTED_INDEX;
         if (savedInstanceState != null) {
             boolean isVisible = savedInstanceState.getBoolean(TAB_VISIBLE_STATE);
             if (isVisible) {
@@ -206,18 +192,46 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
                 getTabBarManager().hideTabBar();
             }
             mActiveApp = savedInstanceState.getInt(LAST_ACTIVE_APP);
+            lastActiveTab = savedInstanceState.getInt(SELECTED_TAB_STATE, TAB_NOT_SELECTED_INDEX);
         }
+
+        mNavigationManager = new MediaNavigationManager(this, getSupportFragmentManager(),
+                getMainContentContainerId());
+        mNavigationManager.setActiveApp(mActiveApp);
+
+        getTabBarManager().addOnTabChangeListener(mNavigationManager);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().hide();
+        }
+
         if (getTabBarManager().isTabBarVisible()) {
             getAppBarView().removeAppBarButton(mBurgerMenuButton.getPosition());
         }
         /* Hide right bar since we don't need one for media app*/
         getAppBarView().hideRightBar();
 
+        mNavigationManager.setActiveApp(mActiveApp);
+
+        setAppBarButtonsForActiveApp();
+
+        PSATabBarManager tabManager = getTabBarManager();
+        mNavigationManager.formMediaTabBar(tabManager, this);
+        if (lastActiveTab == TAB_NOT_SELECTED_INDEX) {
+            mNavigationManager.showActiveApp();
+        } else {
+            mNavigationManager.showActiveApp(lastActiveTab, true);
+        }
+
+        mMediaPlaybackModel.start();
+        mMediaPlaybackModel.addListener(this);
+
     }
 
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         savedInstanceState.putInt(LAST_ACTIVE_APP, mActiveApp);
+        savedInstanceState.putBoolean(TAB_VISIBLE_STATE, getTabBarManager().isTabBarVisible());
+        savedInstanceState.putInt(SELECTED_TAB_STATE, mNavigationManager.getActiveTab());
         super.onSaveInstanceState(savedInstanceState);
     }
 
@@ -226,8 +240,8 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "onResumeFragments");
         }
-        super.onResumeFragments();
         handleIntent(getIntent());
+        super.onResumeFragments();
     }
 
     @Override
@@ -303,6 +317,13 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         } else if (extras != null && extras.containsKey(PSAUsbStateService.USB_SOURCE_ID)) {
             mNavigationManager.openPlayerTab(extras.getString(PSAUsbStateService.USB_SOURCE_ID));
         }
+    }
+
+    public MediaLibraryController getLibraryController() {
+        if (mLibraryController == null) {
+            mLibraryController = new MediaLibraryController(mMediaPlaybackModel);
+        }
+        return mLibraryController;
     }
 
     /**

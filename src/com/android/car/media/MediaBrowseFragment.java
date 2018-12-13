@@ -1,21 +1,12 @@
 package com.android.car.media;
 
 import android.content.Context;
-import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.content.res.Resources;
 import android.graphics.Color;
-import android.graphics.ColorFilter;
-import android.graphics.drawable.Drawable;
 import android.media.browse.MediaBrowser;
 import android.media.session.MediaController;
 import android.os.Bundle;
-import android.os.Environment;
-import android.os.IBinder;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -29,11 +20,9 @@ import com.android.car.media.LibraryGridListAdapter;
 import com.android.car.media.MediaLibraryController;
 import com.android.car.media.MediaLibraryFragment;
 import com.android.car.media.MediaPlaybackModel;
-import android.widget.Toast;
 import com.android.car.usb.PSAUsbStateService;
 import com.android.car.usb.UsbDevice;
 import com.harman.psa.widget.PSAAppBarButton;
-import com.harman.psa.widget.PSABaseFragment;
 import com.harman.psa.widget.dropdowns.DropdownButton;
 import com.harman.psa.widget.dropdowns.DropdownDialog;
 import com.harman.psa.widget.dropdowns.DropdownHelper;
@@ -43,21 +32,13 @@ import com.harman.psa.widget.dropdowns.listener.OnDropdownButtonClickEventListen
 import com.harman.psa.widget.dropdowns.listener.OnDropdownItemClickListener;
 import com.harman.psa.widget.verticallist.model.ItemData;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-
-import android.graphics.PorterDuff;
-
-import static android.content.Context.BIND_AUTO_CREATE;
-
 public class MediaBrowseFragment extends MediaBaseFragment implements
-        LibraryGridListAdapter.LibraryGridListItemClickListener, 
-        LibraryCategoryVerticalListAdapter.OnItemClickListener, 
+        LibraryGridListAdapter.LibraryGridListItemClickListener,
+        LibraryCategoryVerticalListAdapter.OnItemClickListener,
         MediaLibraryController.ItemsUpdatedCallback,
         OnDropdownButtonClickEventListener, OnDropdownItemClickListener, PSAUsbStateService.UsbDeviceStateListener,
         OnDismissListener {
@@ -91,8 +72,16 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mContext = getContext();
+    }
+
+    @Override
+    public void onActivityCreated(Bundle bundle) {
+        super.onActivityCreated(bundle);
         mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
-        mMediaLibraryController = new MediaLibraryController(mMediaPlaybackModel);
+        mMediaLibraryController = ((MediaActivity) getHostActivity()).getLibraryController();
+
+        mMediaLibraryController.addListener(this);
+        mMediaLibraryController.updateRootElements();
     }
 
     @Override
@@ -106,7 +95,7 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     public View onCreateView(LayoutInflater inflater, final ViewGroup container,
                              Bundle savedInstanceState) {
         View v = getView();
-        if(v == null) {
+        if (v == null) {
             v = inflater.inflate(R.layout.psa_media_browse_fragment, container, false);
         }
 
@@ -131,17 +120,12 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
         mRecentlyPlayedListAdapter.setSectionsLists(result);
         mRecentlyPlayedRecyclerView.setAdapter(mRecentlyPlayedListAdapter);
 
-        mMediaLibraryController.updateRootElements();
-
-
         return v;
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        mMediaLibraryController.addListener(this);
 
         DropdownButton sourceSwitchButton = (DropdownButton) LayoutInflater.from(getContext()).inflate(
                 R.layout.psa_view_source_switch_button,
@@ -282,37 +266,46 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     public void onItemClicked(LibraryCategoryGridItemData data) {
         Log.d(TAG, "Category clicked " + data.getItemId());
         mMediaLibraryController.saveRootCategory(data.getItemId());
-        Bundle fragmentExtra = new Bundle();
-        fragmentExtra.putString(MediaLibraryFragment.LIST_HEADER_KEY, data.getPrimaryText());
-        fragmentExtra.putString(MediaLibraryFragment.LIST_SUBTITLE_KEY, null);
-        fragmentExtra.putString(MediaLibraryFragment.MEDIA_ID_KEY, data.getItemId());
-        fragmentExtra.putString(MediaLibraryFragment.ROOT_CATEGORY_ID_KEY, data.getItemId());
+
+        String fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_LIST;
+        boolean playShuffleActionAvailable = false;
+        String playShuffleActionText = null;
+        String headerText = data.getPrimaryText();
+        String subtitleText = null;
+        String mediaId = data.getItemId();
+        String rootCategory = data.getItemId();
+        boolean isUsbDeviceRoot = false;
+        boolean isUsbDeviceBrowsing = false;
+        String usbDeviceId = null;
         if (data.getItemId().equals(MediaLibraryController.ALBUMS_ID)) {
             /* Albums showed in grid list*/
-            fragmentExtra.putString(MediaLibraryFragment.FRAGMENT_TYPE_KEY, MediaLibraryFragment.FRAGMENT_TYPE_GRID);
-            getNavigationManager().showFragment(
-                    MediaLibraryFragment.newCategoryInstance(mMediaLibraryController, fragmentExtra));
+            fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_GRID;
         } else if (MediaLibraryController.FOLDERS_ID.equals(data.getItemId())) {
-            fragmentExtra.putString(MediaLibraryFragment.FRAGMENT_TYPE_KEY,
-                    MediaLibraryFragment.FRAGMENT_TYPE_USB_SOURCES);
-            fragmentExtra.putBoolean(MediaLibraryFragment.IS_USB_DEVICE_BROWSING, true);
-            getNavigationManager().showFragment(
-                    MediaLibraryFragment.newCategoryInstance(mMediaLibraryController, fragmentExtra));
+            fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_USB_SOURCES;
+            isUsbDeviceBrowsing = true;
         } else {
             if (data.getItemId().equals(MediaLibraryController.ARTISTS_ID)) {
                 /* Shuffle all action is available for artists list*/
                 Bundle extras = data.getExtras();
                 if (extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false) == true) {
-                    fragmentExtra.putBoolean(MediaLibraryFragment.PLAY_SHUFFLE_ACTION_AVAILABILITY_KEY, true);
-                    fragmentExtra.putString(MediaLibraryFragment.PLAY_SHUFFLE_ACTION_TEXT_KEY,
-                            extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
-                                    getContext().getResources().getString(R.string.library_category_play_shuffle)));
+                    playShuffleActionAvailable = true;
+                    playShuffleActionText = extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
+                            getContext().getResources().getString(R.string.library_category_play_shuffle));
                 }
             }
-            fragmentExtra.putString(MediaLibraryFragment.FRAGMENT_TYPE_KEY, MediaLibraryFragment.FRAGMENT_TYPE_LIST);
-            getNavigationManager().showFragment(
-                    MediaLibraryFragment.newCategoryInstance(mMediaLibraryController, fragmentExtra));
         }
+
+        getNavigationManager().showFragment(
+                MediaLibraryFragment.newCategoryInstance(fragmentType,
+                        playShuffleActionAvailable,
+                        playShuffleActionText,
+                        headerText,
+                        subtitleText,
+                        mediaId,
+                        rootCategory,
+                        isUsbDeviceRoot,
+                        isUsbDeviceBrowsing,
+                        usbDeviceId));
     }
 
     public void onRootItemsUpdated(List<LibraryCategoryGridItemData> result) {
@@ -372,7 +365,8 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
         MediaBrowser browser = mMediaPlaybackModel.getMediaBrowser();
         if (browser != null && browser.isConnected()) {
             browser.subscribe("__FOLDERS__",
-                    new MediaBrowser.SubscriptionCallback() {});
+                    new MediaBrowser.SubscriptionCallback() {
+                    });
         }
         /***** Temporary *****/
     }

@@ -252,10 +252,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         UserManager usrManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mCurrentUser = usrManager.getUserName();
 
-
-        mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
-        mMediaPlaybackModel.addListener(this);
-
         mTelephonyManager =
                 (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
 
@@ -263,6 +259,34 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mShowTitleDelayMs = res.getInteger(R.integer.new_album_art_fade_in_duration);
         mDefaultScrimAlpha = res.getFloat(R.dimen.media_scrim_alpha);
         mDarkenedScrimAlpha = res.getFloat(R.dimen.media_scrim_darkened_alpha);
+    }
+
+    @Override
+    public void onActivityCreated(Bundle bundle){
+        super.onActivityCreated(bundle);
+        mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
+        mMediaPlaybackModel.addListener(this);
+
+        mShuffleState = mMediaPlaybackModel.getShuffleState();
+        mRepeatState = mMediaPlaybackModel.getRepeatState();
+
+        if (mShuffleState == -1) {
+            mShuffleButton.setEnabled(false);
+        } else {
+            mShuffleButton.setEnabled(true);
+            mShuffleButton.setPosition(mShuffleState);
+        }
+
+        if (mRepeatState == -1) {
+            mRepeatButton.setEnabled(false);
+        } else {
+            mRepeatButton.setEnabled(true);
+            mRepeatButton.setPosition(mRepeatState);
+        }
+
+        onMetadataChanged(mMediaPlaybackModel.getMetadata());
+        onQueueChanged(mMediaPlaybackModel.getQueue());
+        onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
     }
 
     @Override
@@ -328,23 +352,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
         mProfileView.setText(mCurrentUser);
 
-        mShuffleState = mMediaPlaybackModel.getShuffleState();
-        mRepeatState = mMediaPlaybackModel.getRepeatState();
-
-        if (mShuffleState == -1) {
-            mShuffleButton.setEnabled(false);
-        } else {
-            mShuffleButton.setEnabled(true);
-            mShuffleButton.setPosition(mShuffleState);
-        }
-
-        if (mRepeatState == -1) {
-            mRepeatButton.setEnabled(false);
-        } else {
-            mRepeatButton.setEnabled(true);
-            mRepeatButton.setPosition(mRepeatState);
-        }
-
         /* source switch button */
         //TODO implement source selection
         generateSourceIconMap();
@@ -381,10 +388,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         getAppBarView().replaceAppBarButton(mSourceSwitchButton);
         sourceSwitchButton.setOnDropdownButtonClickEventListener(mSourceButtonClickListener);
 
-
-        onMetadataChanged(mMediaPlaybackModel.getMetadata());
-        onQueueChanged(mMediaPlaybackModel.getQueue());
-        onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
         // Note: at registration, TelephonyManager will invoke the callback with the current state.
         mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
     }
@@ -1180,7 +1183,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     };
 
     private String convertMstoMinSec(long millisecs) {
-        return String.format("%d:%d",
+        return String.format("%02d:%02d",
                 TimeUnit.MILLISECONDS.toMinutes(millisecs),
                 TimeUnit.MILLISECONDS.toSeconds(millisecs) -
                         TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millisecs))

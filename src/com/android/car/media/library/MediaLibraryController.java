@@ -1,9 +1,7 @@
 package com.android.car.media;
 
-
 import android.content.Context;
 import android.media.browse.MediaBrowser;
-import android.media.session.MediaController;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Bundle;
@@ -34,6 +32,7 @@ public class MediaLibraryController {
     static final String ARTISTS_ID = "__ARTISTS__";
     static final String RECENTLY_PLAYED_ID = "__RECENTLY_PLAYED__";
     static final String FOLDERS_ID = "__FOLDERS__";
+    static final String ROOT_ID = "__ROOT__";
 
     static final String SECONDARY_TEXT_KEY = "SECONDARY_TEXT";
 
@@ -62,6 +61,8 @@ public class MediaLibraryController {
 
     private boolean mShowSections = false;
 
+    private List<String> mMediaToUpdate = new LinkedList<>();
+
     interface ItemsUpdatedCallback {
         void onItemsUpdated(List<ItemData> result, boolean showSections);
 
@@ -71,6 +72,7 @@ public class MediaLibraryController {
     public MediaLibraryController(MediaPlaybackModel model) {
         mMediaPlaybackModel = model;
         mMediaPlaybackModel.addListener(mModelListener);
+        MediaBrowser browser = mMediaPlaybackModel.getMediaBrowser();
     }
 
     @MainThread
@@ -112,6 +114,9 @@ public class MediaLibraryController {
                     Log.e(TAG, "Error loading children of " + parentId);
                 }
             });
+            mMediaToUpdate.remove(folder);
+        } else {
+            mMediaToUpdate.add(folder);
         }
     }
 
@@ -134,62 +139,65 @@ public class MediaLibraryController {
                     Log.e(TAG, "Error loading children of " + parentId);
                 }
             });
+            mMediaToUpdate.remove(parentId);
+        } else {
+            mMediaToUpdate.add(parentId);
         }
     }
 
     private void onMediaItems(String parentId, List<MediaBrowser.MediaItem> mediaItems) {
-            Log.d(TAG, "onChildrenLoaded " + parentId + " size " + mediaItems.size());
-            if (!mediaItems.isEmpty()) {
-                List<ItemData> result = new ArrayList<>();
-                mShowSections = false;
-                List<Boolean> showSections = new LinkedList<>();
-                showSections.add(mShowSections);
-                for (MediaBrowser.MediaItem item : mediaItems) {
-                    ItemData.Builder builder = new ItemData.Builder()
-                            .setId(item.getMediaId())
-                            .setPrimaryText(item.getDescription().getTitle().toString())
-                            .setAction1ResId(R.drawable.media_library_album_default_art)
-                            .setAction1SelectedResId(R.drawable.psa_media_playlist_active_icon)
-                            .setAction1ViewType(ItemData.ACTION_VIEW_TYPE_IMAGEVIEW);
-                    Bundle itemExtras = item.getDescription().getExtras();
-                    if (itemExtras != null && !itemExtras.getString(SECONDARY_TEXT_KEY, "").isEmpty()){
-                        builder.setSecondaryText(itemExtras.getString(SECONDARY_TEXT_KEY));
-                    }else if (item.getDescription().getSubtitle() != null) {
-                        builder.setSecondaryText(item.getDescription().getSubtitle().toString());
-                    }
-                    if (isActiveItem(item.getMediaId())) {
-                        builder.setSelected(true);
-                    }
-                    
-                    if (itemExtras != null &&
-                            itemExtras.getBoolean(MediaLibraryController.PLAY_ITEM_ACTION_KEY, false) == true) {
-                        builder.setAction2ResId(R.drawable.psa_media_library_item_action_icon);
-                    } else {
-                        builder.setAction2ResId(-2);
-                    }
-                    ItemData model = builder.build();
-                    model.setAction1DrawableUri(item.getDescription().getIconUri());
-                    Bundle extras = itemExtras;
-                    if (extras == null) {
-                        extras = new Bundle();
-                    }
-                    extras.putInt(MEDIA_ITEM_TYPE_KEY, (item.isPlayable() ? MediaBrowser.MediaItem.FLAG_PLAYABLE
-                            : MediaBrowser.MediaItem.FLAG_BROWSABLE));
-                    if (itemExtras != null) {
-                        mShowSections = itemExtras.getBoolean(SHOW_INDEX_KEY, false);
-                    } else {
-                        mShowSections = false;
-                    }
-                    showSections.set(0, mShowSections);
-                    model.setExtras(extras);
-                    result.add(model);
+        Log.d(TAG, "onChildrenLoaded " + parentId + " size " + mediaItems.size());
+        if (!mediaItems.isEmpty()) {
+            List<ItemData> result = new ArrayList<>();
+            mShowSections = false;
+            List<Boolean> showSections = new LinkedList<>();
+            showSections.add(mShowSections);
+            for (MediaBrowser.MediaItem item : mediaItems) {
+                ItemData.Builder builder = new ItemData.Builder()
+                        .setId(item.getMediaId())
+                        .setPrimaryText(item.getDescription().getTitle().toString())
+                        .setAction1ResId(R.drawable.media_library_album_default_art)
+                        .setAction1SelectedResId(R.drawable.psa_media_playlist_active_icon)
+                        .setAction1ViewType(ItemData.ACTION_VIEW_TYPE_IMAGEVIEW);
+                Bundle itemExtras = item.getDescription().getExtras();
+                if (itemExtras != null && !itemExtras.getString(SECONDARY_TEXT_KEY, "").isEmpty()) {
+                    builder.setSecondaryText(itemExtras.getString(SECONDARY_TEXT_KEY));
+                } else if (item.getDescription().getSubtitle() != null) {
+                    builder.setSecondaryText(item.getDescription().getSubtitle().toString());
                 }
-                mItemsList.clear();
-                mItemsList.addAll(result);
-                notifyListeners((listener) -> listener.onItemsUpdated(result, showSections.get(0)));
-            } else {
-                notifyListeners((listener) -> listener.onItemsUpdated(new ArrayList<>(), false));
+                if (isActiveItem(item.getMediaId())) {
+                    builder.setSelected(true);
+                }
+
+                if (itemExtras != null &&
+                        itemExtras.getBoolean(MediaLibraryController.PLAY_ITEM_ACTION_KEY, false) == true) {
+                    builder.setAction2ResId(R.drawable.psa_media_library_item_action_icon);
+                } else {
+                    builder.setAction2ResId(-2);
+                }
+                ItemData model = builder.build();
+                model.setAction1DrawableUri(item.getDescription().getIconUri());
+                Bundle extras = itemExtras;
+                if (extras == null) {
+                    extras = new Bundle();
+                }
+                extras.putInt(MEDIA_ITEM_TYPE_KEY, (item.isPlayable() ? MediaBrowser.MediaItem.FLAG_PLAYABLE
+                        : MediaBrowser.MediaItem.FLAG_BROWSABLE));
+                if (itemExtras != null) {
+                    mShowSections = itemExtras.getBoolean(SHOW_INDEX_KEY, false);
+                } else {
+                    mShowSections = false;
+                }
+                showSections.set(0, mShowSections);
+                model.setExtras(extras);
+                result.add(model);
             }
+            mItemsList.clear();
+            mItemsList.addAll(result);
+            notifyListeners((listener) -> listener.onItemsUpdated(result, showSections.get(0)));
+        } else {
+            notifyListeners((listener) -> listener.onItemsUpdated(new ArrayList<>(), false));
+        }
     }
 
     public void updateRootElements() {
@@ -231,8 +239,10 @@ public class MediaLibraryController {
                     }
                 });
             }
+            mMediaToUpdate.remove(ROOT_ID);
         } else {
             Log.w(TAG, "Browser service is not connected. Failed to load root categories.");
+            mMediaToUpdate.add(ROOT_ID);
         }
     }
 
@@ -274,7 +284,7 @@ public class MediaLibraryController {
     }
 
     public void playMediaItem(ItemData data) {
-        mMediaPlaybackModel.playItem(data.getId(), mCurrentCategory ,data.getExtras());
+        mMediaPlaybackModel.playItem(data.getId(), mCurrentCategory, data.getExtras());
     }
 
     public void fireAction(ItemData data, int action, String rootCategoryId) {
@@ -327,8 +337,23 @@ public class MediaLibraryController {
 
                 @Override
                 public void onMediaConnected() {
+                    Log.d(TAG, "onMediaConnected");
                     Assert.isMainThread();
-                    onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
+                    if (mMediaToUpdate.size() == 0) {
+                        onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
+                    } else {
+                        MediaBrowser browser = mMediaPlaybackModel.getMediaBrowser();
+                        if (browser != null && browser.isConnected()) {
+                            List<String> mediaCopy = new LinkedList<>(mMediaToUpdate);
+                            for (String mediaId : mediaCopy) {
+                                if (ROOT_ID.equals(mediaId)) {
+                                    updateRootElements();
+                                } else {
+                                    getChildrenElements(mediaId);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 @Override

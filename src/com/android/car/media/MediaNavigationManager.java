@@ -6,7 +6,6 @@ import android.util.Log;
 
 import com.android.car.media.R;
 import com.android.car.radio.MainRadioFragment;
-
 import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
 import com.harman.psa.widget.tabview.PSATabView;
@@ -19,6 +18,7 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
     private int mActiveApp = MediaConstants.MEDIA_APP;
     private int mActiveTab = MediaTab.PLAYER.ordinal();
     private PSATabBarManager mTabBarManager;
+    private boolean mIsReadyToInteract;
 
     private static enum MediaTab {
         PLAYER,
@@ -40,24 +40,33 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
         super(context, fragmentManager, contentContainer);
     }
 
-    public void setActiveApp(int activeApp){
+    public void setActiveApp(int activeApp) {
         mActiveApp = activeApp;
         refreshTabLabels();
     }
 
-    public void showActiveApp(){
-        mTabBarManager.setSelectedTab(mActiveTab);
-        onTabChanged(null, mActiveTab);
+    public void showActiveApp(int activeTab, boolean dontUpdateFragment) {
+        mIsReadyToInteract = true;
+        mTabBarManager.setSelectedTab(activeTab);
+        if (!dontUpdateFragment) {
+            onTabChanged(null, activeTab);
+        } else {
+            mActiveTab = activeTab;
+        }
     }
 
-    private void refreshTabLabels(){
+    public void showActiveApp() {
+        showActiveApp(mActiveTab, false);
+    }
+
+    private void refreshTabLabels() {
         mTabLabels = new HashMap<>();
         if (mActiveApp == MediaConstants.RADIO_APP) {
             mTabLabels.put(RadioTab.PLAYER.ordinal(), R.string.player_radio_tab);
             mTabLabels.put(RadioTab.STATION_LIST.ordinal(), R.string.station_list_radio_tab);
             mTabLabels.put(RadioTab.FAVOURITES.ordinal(), R.string.favourites_radio_tab);
             mTabLabels.put(RadioTab.SETTINGS.ordinal(), R.string.settings_media_tab);
-        }else{
+        } else {
             mTabLabels.put(MediaTab.PLAYER.ordinal(), R.string.player_media_tab);
             mTabLabels.put(MediaTab.TRACKLIST.ordinal(), R.string.tracklist_media_tab);
             mTabLabels.put(MediaTab.LIBRARY.ordinal(), R.string.library_media_tab);
@@ -67,7 +76,6 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
 
     private void openMediaTab(int tabNumber) {
         clearBackStack();
-        mActiveTab = tabNumber;
         MediaTab tab = MediaTab.values()[tabNumber];
         switch (tab) {
             case PLAYER:
@@ -90,7 +98,6 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
 
     private void openRadioTab(int tabNumber) {
         clearBackStack();
-        mActiveTab = tabNumber;
         RadioTab tab = RadioTab.values()[tabNumber];
         switch (tab) {
             case PLAYER:
@@ -105,25 +112,33 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
 
     @Override
     public void onTabChanged(PSATabView tab, int tabNumber) {
-        if (mActiveApp == MediaConstants.RADIO_APP){
+        if (!mIsReadyToInteract) {
+            return;
+        }
+        mActiveTab = tabNumber;
+        if (mActiveApp == MediaConstants.RADIO_APP) {
             openRadioTab(tabNumber);
-        } else{
+        } else {
             openMediaTab(tabNumber);
         }
     }
 
-    public void formMediaTabBar(PSATabBarManager tabManager, Context context){
+    public int getActiveTab() {
+        return mActiveTab;
+    }
+
+    public void formMediaTabBar(PSATabBarManager tabManager, Context context) {
         mTabBarManager = tabManager;
         mTabBarManager.removeAllTabs();
         PSATabView tabView;
-        if (mActiveApp == MediaConstants.RADIO_APP){
+        if (mActiveApp == MediaConstants.RADIO_APP) {
             for (RadioTab radioTab : RadioTab.values()) {
                 tabView = new PSATabView(context);
                 String tabLabel = context.getResources().getString(mTabLabels.get(radioTab.ordinal()));
                 tabView.setTitle(tabLabel);
                 mTabBarManager.addTab(tabView);
             }
-        } else{
+        } else {
             for (MediaTab mediaTab : MediaTab.values()) {
                 tabView = new PSATabView(context);
                 String tabLabel = context.getResources().getString(mTabLabels.get(mediaTab.ordinal()));

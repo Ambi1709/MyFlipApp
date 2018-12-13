@@ -45,16 +45,25 @@ public class MediaPlaylistFragment extends PSABaseFragment
     private int mRepeatState = -1;
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
+    public void onActivityCreated(Bundle bundle){
+        super.onActivityCreated(bundle);
         mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
         mMediaPlaybackModel.addListener(mModelListener);
 
         mShuffleState = mMediaPlaybackModel.getShuffleState();
         mRepeatState = mMediaPlaybackModel.getRepeatState();
 
+        List<MediaSession.QueueItem> data = updatePlaylistData(null);
+
+        mAdapter.setContext(getHostActivity());
+        mAdapter.setItemClickListener(this);
+
+        mAdapter.setItemsData(data, mMediaPlaybackModel.getActiveQueueItemId());
+
+        mRecyclerView.setItemAnimator(null);
+        mRecyclerView.setAdapter(mAdapter);
     }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, final ViewGroup container,
@@ -103,15 +112,7 @@ public class MediaPlaylistFragment extends PSABaseFragment
 
         mAdapter = new MediaPlaylistViewAdapter();
 
-        List<MediaSession.QueueItem> data = updatePlaylistData(null);
 
-        mAdapter.setContext(getHostActivity());
-        mAdapter.setItemClickListener(this);
-
-        mAdapter.setItemsData(data, mMediaPlaybackModel.getActiveQueueItemId());
-
-        mRecyclerView.setItemAnimator(null);
-        mRecyclerView.setAdapter(mAdapter);
     }
 
     @Override

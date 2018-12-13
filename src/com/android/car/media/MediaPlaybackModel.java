@@ -74,11 +74,15 @@ public class MediaPlaybackModel {
 
     private MediaMetadata mCurrentTrackMetadata;
 
+    public final static int REPEAT_UNDEFINED_STATE = -1;
+
+
+    public final static int SHUFFLE_UNDEFINED_STATE = -1;
     private final static int SHUFFLE_OFF_STATE = 0;
     private final static int SHUFFLE_ON_STATE = 1;
 
-    private static int mShuffleState = -1;
-    private static int mRepeatState = -1;
+    private static int mShuffleState = SHUFFLE_UNDEFINED_STATE;
+    private static int mRepeatState = REPEAT_UNDEFINED_STATE;
 
     private PlaybackState.CustomAction mRepeatAction;
     private PlaybackState.CustomAction mShuffleAction;
@@ -278,7 +282,7 @@ public class MediaPlaybackModel {
         return MediaSession.QueueItem.UNKNOWN_ID;
     }
 
-    public String getActiveCategoryId(){
+    public String getActiveCategoryId() {
         return mActiveCategory;
     }
 
@@ -382,6 +386,7 @@ public class MediaPlaybackModel {
     private final MediaManager.Listener mMediaManagerListener = new MediaManager.Listener() {
         @Override
         public void onMediaAppChanged(final ComponentName name) {
+            Log.d(TAG, "onMediaAppChanged");
             mHandler.post(() -> {
                 if (mBrowser != null) {
                     mBrowser.disconnect();
@@ -531,11 +536,11 @@ public class MediaPlaybackModel {
         for (PlaybackState.CustomAction customAction : customActions) {
             Bundle extras = customAction.getExtras();
 
-            if (extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, -1) != -1) {
+            if (extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, SHUFFLE_UNDEFINED_STATE) != SHUFFLE_UNDEFINED_STATE) {
                 //SHUFFLE
                 mShuffleAction = customAction;
                 mShuffleState = extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState);
-            } else if (extras.getInt(MediaConstants.ACTION_REPEAT_STATE, -1) != -1) {
+            } else if (extras.getInt(MediaConstants.ACTION_REPEAT_STATE, REPEAT_UNDEFINED_STATE) != REPEAT_UNDEFINED_STATE) {
                 //REPEAT
                 mRepeatAction = customAction;
                 mRepeatState = extras.getInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
