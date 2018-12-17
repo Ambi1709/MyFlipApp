@@ -1,5 +1,7 @@
 package com.android.car.usb;
 
+import android.os.Parcelable;
+
 import java.util.*;
 
 public class UsbDevice {
@@ -99,5 +101,9 @@ public class UsbDevice {
 
     public boolean isReady() {
         return isMounted() && mScanned;
+    }
+
+    public int getVolumeCount() {
+        return mVolumes.keySet().size();
     }
 }

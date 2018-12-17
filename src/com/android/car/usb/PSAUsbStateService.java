@@ -8,29 +8,30 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.graphics.Color;
-import android.os.Bundle;
-import android.os.IBinder;
-import android.os.UserHandle;
+import android.os.*;
 import android.os.storage.*;
-import android.util.Log;
 import com.android.car.media.R;
-import android.os.Binder;
 import com.android.car.media.MediaActivity;
 import com.android.internal.messages.nano.SystemMessageProto;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+import android.content.IntentFilter;
+
 
 public class PSAUsbStateService extends Service {
 
     private static final String TAG = PSAUsbStateService.class.getCanonicalName();
 
+    private static final String SP_USB_DEVICE_IDS = "usbIdsSharedPrefs";
+
+    private static final String SP_LAST_USB_DEVICE_ID = "lastUsbDeviceId";
+
     private static final String CHANNEL_NAME = "pasNotificationChanel";
 
-    private static int sLastUsbDeviceId = 5;
+    private static int sLastUsbDeviceId;
 
     public static final String USB_SOURCE_ID = "usbSourceId";
 
@@ -42,19 +43,19 @@ public class PSAUsbStateService extends Service {
 
     private Map<String, UsbDevice> mUsbDevices = new HashMap<>();
 
-    private UsbDevice mToBeScanned;
+    private UsbDevice mWaitingScan;
 
-    private UsbDevice mUsbDevice;
+    private UsbDevice mWaitingNotify;
 
-    private NotificationChannel mChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_HIGH);
-
-    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+    private BroadcastReceiver mUsbScanReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             onScanFinished();
         }
     };
+
+    private NotificationChannel mChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH);
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -64,6 +65,7 @@ public class PSAUsbStateService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        sLastUsbDeviceId = getSharedPreferences(SP_USB_DEVICE_IDS, MODE_PRIVATE).getInt(SP_LAST_USB_DEVICE_ID, 1000);
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         mChannel.enableLights(true);
         mChannel.setLightColor(Color.RED);
@@ -75,77 +77,68 @@ public class PSAUsbStateService extends Service {
                     addVolumeInfo(volumeInfo);
                 }
             }
-            storageManager.registerListener(new StorageEventListener() {
-                @Override
-                public void onVolumeStateChanged(VolumeInfo vol, int oldState, int newState) {
-                    if (newState != oldState) {
-                        PSAUsbStateService.this.handleUsbState(vol);
+            new UsbReadyChecker(this, new ArrayList<>(mUsbDevices.values()), () -> {
+                storageManager.registerListener(new StorageEventListener() {
+                    @Override
+                    public void onVolumeStateChanged(VolumeInfo vol, int oldState, int newState) {
+                        if (newState != oldState) {
+                            PSAUsbStateService.this.handleUsbState(vol);
+                        }
                     }
-                }
 
-                @Override
-                public void onVolumeRecordChanged(VolumeRecord rec) {
-                    VolumeInfo vol = storageManager.findVolumeById(rec.fsUuid);
-                    if (vol != null) {
-                        handleUsbState(vol);
+                    @Override
+                    public void onVolumeRecordChanged(VolumeRecord rec) {
+                        VolumeInfo vol = storageManager.findVolumeById(rec.fsUuid);
+                        if (vol != null) {
+                            handleUsbState(vol);
+                        }
                     }
-                }
 
-                @Override
-                public void onDiskScanned(DiskInfo disk, int volumeCount) {
-                    onScanFinished(disk, volumeCount);
-                }
+                    @Override
+                    public void onDiskScanned(DiskInfo disk, int volumeCount) {
+                        onScanFinished(disk, volumeCount);
+                    }
 
-                @Override
-                public void onDiskDestroyed(DiskInfo disk) {
-                    handleDiskDestroyed(disk);
-                }
-            });
+                    @Override
+                    public void onDiskDestroyed(DiskInfo disk) {
+                        handleDiskDestroyed(disk);
+                    }
+                });
+                IntentFilter intentFilter = new IntentFilter(Intent.ACTION_MEDIA_SCANNER_FINISHED);
+                intentFilter.addDataScheme("file");
+                registerReceiver(mUsbScanReceiver, intentFilter);
+            }).execute();
         }
-
-        IntentFilter intentFilter = new IntentFilter(Intent.ACTION_MEDIA_SCANNER_FINISHED);
-        intentFilter.addDataScheme("file");
-        registerReceiver(mReceiver, intentFilter);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(mReceiver);
-    }
-
-    private void onScanFinished() {
-        if (mToBeScanned != null) {
-            mToBeScanned.setScanned(true);
-            notify(mToBeScanned);
-            mToBeScanned = null;
-        }
+        unregisterReceiver(mUsbScanReceiver);
     }
 
     private void handleDiskDestroyed(DiskInfo disk) {
-        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        if (nm != null) {
-            nm.cancelAsUser(disk.getId(), SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK,
-                    UserHandle.ALL);
+        cancelNotify(SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK);
+        onRemoveUsbDevice(mUsbDevices.remove(disk.id));
+    }
+
+    private void onScanFinished() {
+        if (mWaitingScan != null) {
+            mWaitingScan.setScanned(true);
+            if (mWaitingScan.isReady()) {
+                onAddUsbDevice(mWaitingScan);
+            }
+            mWaitingScan = null;
         }
     }
 
     private void onScanFinished(DiskInfo disk, int volumeCount) {
-        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        if (nm != null) {
+        UsbDevice usbDevice = mUsbDevices.get(disk.id);
+        if (usbDevice != null) {
             if (volumeCount == 0 && disk.size > 0) {
-                Notification notify = new Notification.Builder(getApplicationContext(), mChannel.getId())
-                        .setChannelId(NOTIFICATION_CHANNEL_ID).setStyle(new Notification.MediaStyle())
-                        .setContentTitle(getString(R.string.psa_general_notification_title_usb))
-                        .setContentText(getString(R.string.psa_general_notification_content_usb))
-                        .setSmallIcon(R.drawable.psa_general_media_center_picto_style)
-                        .setAutoCancel(true)
-                        .build();
-                nm.notifyAsUser(disk.getId(), SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK,
-                        notify, UserHandle.ALL);
+                notify(usbDevice.getId(), buildBadUsbNotification());
             } else {
-                nm.cancelAsUser(disk.getId(), SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK,
-                        UserHandle.ALL);
+                cancelNotify(SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK);
             }
         }
     }
@@ -155,10 +148,16 @@ public class PSAUsbStateService extends Service {
             UsbDevice usbDevice;
             if (vol.isMountedWritable()) {
                 usbDevice = addVolumeInfo(vol);
+                if (usbDevice.isReady()) {
+                    onAddUsbDevice(usbDevice);
+                }
+            } else if (vol.state == VolumeInfo.STATE_UNMOUNTABLE) {
+                usbDevice = addVolumeInfo(vol);
+                notify(usbDevice.getId(), buildBadUsbNotification());
             } else {
                 usbDevice = removeVolumeInfo(vol);
+                onRemoveUsbDevice(usbDevice);
             }
-            notify(usbDevice);
         }
     }
 
@@ -168,8 +167,10 @@ public class PSAUsbStateService extends Service {
         if (usbDevice == null) {
             usbDevice = new UsbDevice(++sLastUsbDeviceId, vol.disk.id, vol.disk.label, vol.disk.getDescription(),
                     usbVolume);
-            mToBeScanned = usbDevice;
+            mWaitingScan = usbDevice;
             mUsbDevices.put(usbDevice.getDeviceId(), usbDevice);
+            getSharedPreferences(SP_USB_DEVICE_IDS, MODE_PRIVATE)
+                    .edit().putInt(SP_LAST_USB_DEVICE_ID, sLastUsbDeviceId).apply();
         } else {
             usbDevice.setName(vol.disk.label);
             usbDevice.setDescr(vol.disk.getDescription());
@@ -189,45 +190,76 @@ public class PSAUsbStateService extends Service {
         return usbDevice;
     }
 
-    private void notify(UsbDevice usbDevice) {
-        mUsbDevice = usbDevice;
-        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+    private void onAddUsbDevice(UsbDevice usbDevice) {
+        mWaitingNotify = usbDevice;
         if (mUsbDeviceStateListener == null) {
-            if (nm != null && usbDevice != null) {
+            if (usbDevice != null) {
                 if (usbDevice.isReady()) {
-                    nm.notify(usbDevice.getId(), buildNotification());
+                    notify(usbDevice.getId(), buildNotification());
                 } else {
-                    nm.cancel(usbDevice.getId());
+                    cancelNotify(usbDevice.getId());
                 }
             }
         } else {
-            if (nm != null && usbDevice != null && !usbDevice.isReady()) {
-                nm.cancel(usbDevice.getId());
-            }
             mUsbDeviceStateListener.onUsbDeviceStateChanged();
         }
     }
 
-    public void forceNotify() {
-        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        if (nm != null && mUsbDevice != null && mUsbDevice.isReady()) {
-            nm.notify(mUsbDevice.getId(), buildNotification());
+    private void onRemoveUsbDevice(UsbDevice usbDevice) {
+        if (usbDevice != null) {
+            if (mUsbDeviceStateListener != null) {
+                mUsbDeviceStateListener.onUsbDeviceRemoved(usbDevice);
+            }
+            cancelNotify(usbDevice.getId());
         }
+    }
+
+    private void notify(int id, Notification notification) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm != null) {
+            nm.notify(id, notification);
+        }
+    }
+
+    private void cancelNotify(int id) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm != null) {
+            nm.cancel(id);
+        }
+    }
+
+    public void forceNotify() {
+        if (mWaitingNotify != null && mWaitingNotify.isReady()) {
+            notify(mWaitingNotify.getId(), buildNotification());
+        }
+    }
+
+    private Notification buildBadUsbNotification() {
+        return new Notification.Builder(getApplicationContext(), mChannel.getId())
+                .setChannelId(NOTIFICATION_CHANNEL_ID).setStyle(new Notification.MediaStyle())
+                .setContentTitle(getString(R.string.psa_general_notification_title_usb))
+                .setContentText(getString(R.string.psa_general_notification_content_usb))
+                .setSmallIcon(R.drawable.psa_general_media_center_picto_style)
+                .setAutoCancel(true)
+                .build();
     }
 
     private Notification buildNotification() {
         return new Notification.Builder(getApplicationContext(), mChannel.getId())
                 .setChannelId(NOTIFICATION_CHANNEL_ID).setStyle(new Notification.MediaStyle())
                 .setContentTitle(getString(R.string.psa_general_notification_title))
-                .setContentText(getString(R.string.psa_general_notification_content, mUsbDevice.getName()))
+                .setContentText(getString(R.string.psa_general_notification_content, mWaitingNotify.getName()))
                 .setSmallIcon(R.drawable.psa_general_media_center_picto_style)
-                .setContentIntent(getPendingIntent(mUsbDevice.getDeviceId()))
+                .setContentIntent(getPendingIntent(mWaitingNotify.getDeviceId()))
+                .setAutoCancel(true)
                 .build();
     }
 
     private PendingIntent getPendingIntent(String usbSourceId) {
         Intent intent = new Intent(this, MediaActivity.class);
-        intent.putExtra(USB_SOURCE_ID, usbSourceId);
+        Bundle extras = new Bundle();
+        extras.putString(USB_SOURCE_ID, usbSourceId);
+        intent.putExtras(extras);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
         return PendingIntent.getActivity(this, 0, intent, 0);
     }
@@ -266,6 +298,7 @@ public class PSAUsbStateService extends Service {
 
     public interface UsbDeviceStateListener {
         void onUsbDeviceStateChanged();
-    }
 
+        void onUsbDeviceRemoved(UsbDevice usbDevice);
+    }
 }

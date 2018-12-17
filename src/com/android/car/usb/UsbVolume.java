@@ -1,5 +1,7 @@
 package com.android.car.usb;
 
+import android.os.Parcelable;
+
 public class UsbVolume {
 
     private String mId;

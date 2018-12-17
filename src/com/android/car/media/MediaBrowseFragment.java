@@ -169,14 +169,31 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     @Override
     public void onUsbDeviceStateChanged() {
         super.onUsbDeviceStateChanged();
-        if (mUsbNotificationService.getUsbDeviceByDeviceId(mSourceId) == null) {
+        showVolumesDialogIfCan();
+    }
+
+    @Override
+    public void onUsbDeviceRemoved(UsbDevice usbDevice) {
+        if (mDropdownDialog != null) {
+            if (!mUsbNotificationService.getUsbDevices().isEmpty()) {
+                for (DropdownItem dropdownItem : mDropdownItems) {
+                    if (usbDevice.getDeviceId().equals(dropdownItem.getId())) {
+                        mDropdownDialog.removeDropdownItem(dropdownItem);
+                        mDropdownItems.remove(dropdownItem);
+                        break;
+                    }
+                }
+            } else {
+                mDropdownDialog.dismiss();
+            }
+        }
+        if (usbDevice.getDeviceId().equals(mSourceId)) {
             final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
             if (controls != null) {
                 controls.stop();
             }
             selectFoldersAsMediaSource();
         }
-        showVolumesDialogIfCan();
     }
 
     private void showVolumesDialog(List<UsbDevice> usbDevices) {
@@ -202,7 +219,7 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
             } else if (i == 1) {
                 icon = R.drawable.psa_media_source_usb2;
             }
-            DropdownItem dropdownItem = new DropdownItem(usbDevice.getId(), usbDevice.getName(), icon, DropdownHelper.ItemType.ICON);
+            DropdownItem dropdownItem = new DropdownItem(usbDevice.getDeviceId(), usbDevice.getName(), icon, DropdownHelper.ItemType.ICON);
             mDropdownDialog.addDropdownItem(dropdownItem);
             mDropdownItems.add(dropdownItem);
             if (usbDevice.getDeviceId().equals(mSourceId)) {

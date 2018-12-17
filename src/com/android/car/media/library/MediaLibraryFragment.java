@@ -343,25 +343,24 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         Log.d(TAG, "onUsbDeviceStateChanged");
         if (FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
             showUsbDevices(mUsbStateService.getUsbDevices());
-        } else if (!TextUtils.isEmpty(mUsbSourceId)) {
-            List<UsbDevice> usbDevices = mUsbStateService.getUsbDevices();
-            boolean isDeviceMounted = false;
-            for (UsbDevice usbDevice : usbDevices) {
-                if (usbDevice.getDeviceId().equals(mUsbSourceId)) {
-                    isDeviceMounted = true;
-                    break;
+        }
+    }
+
+    @Override
+    public void onUsbDeviceRemoved(UsbDevice usbDevice) {
+        if (!TextUtils.isEmpty(mUsbSourceId) && mUsbSourceId.equals(usbDevice.getDeviceId())) {
+            FragmentManager fm = getFragmentManager();
+            int count = fm.getBackStackEntryCount();
+            if(FOLDERS_ID.equals(mRootCategoryId)) {
+                int tillRootPage = 1;
+                int tillUsbSourcesPage = 2;
+                int till = FOLDERS_ID.equals(mRootCategoryId) ? tillUsbSourcesPage : tillRootPage;
+                for (int i = count - 1; i >= till; i--) {
+                    fm.popBackStackImmediate();
                 }
             }
-            if (!isDeviceMounted) {
-                FragmentManager fm = getFragmentManager();
-                int count = fm.getBackStackEntryCount();
-                if(FOLDERS_ID.equals(mRootCategoryId)) {
-                    int till = FOLDERS_ID.equals(mRootCategoryId) ? 2 : 1;
-                    for (int i = count - 1; i >= till; i--) {
-                        fm.popBackStackImmediate();
-                    }
-                }
-            }
+        } else if (FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
+            showUsbDevices(mUsbStateService.getUsbDevices());
         }
     }
 

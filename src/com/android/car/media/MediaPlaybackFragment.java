@@ -1208,10 +1208,10 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     @Override
     void onUsbServiceReady(PSAUsbStateService usbNotificationService) {
         mUsbStateService = usbNotificationService;
-        if (isResumed()) {
-            mUsbStateService.setUsbDeviceStateListener(this);
-        }
-        if (mIsWaitingUsbService) {
+        mUsbStateService.setUsbDeviceStateListener(this);
+        if (!mSourceIconMap.containsKey(mSourceId) && mUsbStateService.getUsbDeviceByDeviceId(mSourceId) == null) {
+            selectFoldersAsMediaSource();
+        } else if (mIsWaitingUsbService) {
             selectFolderOrUSbAction();
         }
     }
@@ -1219,9 +1219,28 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     @Override
     public void onUsbDeviceStateChanged() {
         super.onUsbDeviceStateChanged();
-        List<UsbDevice> usbDevices = mUsbStateService.getUsbDevices();
-        if (!mSourceIconMap.containsKey(mSourceId)
-                && usbDevices.stream().noneMatch(usbDevice -> usbDevice.getDeviceId().equals(mSourceId))) {
+        if (mDropdownDialog != null) {
+            for (DropdownItem dropdownItem : mUsbDropdownItems) {
+                mDropdownDialog.removeDropdownItem(dropdownItem);
+            }
+            addUsbItems();
+        } else {
+            showSourcesDialog(mSourceSwitchButton.getAppBarButton());
+        }
+    }
+
+    @Override
+    public void onUsbDeviceRemoved(UsbDevice usbDevice) {
+        if (mDropdownDialog != null) {
+            for (DropdownItem dropdownItem : mUsbDropdownItems) {
+                if (usbDevice.getDeviceId().equals(dropdownItem.getId())) {
+                    mDropdownDialog.removeDropdownItem(dropdownItem);
+                    break;
+                }
+            }
+            addUsbItems();
+        }
+        if (usbDevice.getDeviceId().equals(mSourceId)) {
             final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
             if (controls != null) {
                 controls.stop();
@@ -1243,15 +1262,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             }
             selectFoldersAsMediaSource();
         }
-
-        if (mDropdownDialog != null) {
-            for (DropdownItem dropdownItem : mUsbDropdownItems) {
-                mDropdownDialog.removeDropdownItem(dropdownItem);
-            }
-            addUsbItems();
-        } else if (!usbDevices.isEmpty()) {
-            showSourcesDialog(mSourceSwitchButton.getAppBarButton());
-        }
     }
 
     private void showSourcesDialog(View view) {
@@ -1272,7 +1282,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         //Set listener for action item clicked
         mDropdownDialog.setOnActionItemClickListener(this);
 
-        mDropdownDialog.setOnDismissListener((OnDismissListener) this::onCloseSourceDialog);
+        mDropdownDialog.setOnDismissListener(() -> { mDropdownDialog = null; });
         mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
     }
 
@@ -1289,13 +1299,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         }
     }
 
-    private void onCloseSourceDialog() {
-        mDropdownDialog = null;
-    }
-
     @Override
     public void onItemClick(DropdownItem item) {
-        onCloseSourceDialog();
+        mDropdownDialog = null;
         //here we can filter which action item was clicked with pos or actionId parameter
         String title = item.getTitle();
         PSAToast.makeText(getContext(), title + " selected", Toast.LENGTH_SHORT).show();
@@ -1333,6 +1339,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         }
 
         selectFolderOrUSbAction();
+        saveSourceId(mSourceId);
     }
 
     private void selectFolderOrUSbAction() {
