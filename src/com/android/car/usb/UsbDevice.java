@@ -26,6 +26,13 @@ public class UsbDevice {
         mVolumes.put(usbVolume.getId(), usbVolume);
     }
 
+    public UsbDevice(int id, String deviceId, String name, String descr) {
+        mId = id;
+        mDeviceId = deviceId;
+        mName = name;
+        mDescr = descr;
+    }
+
     public void addVolume(UsbVolume usbVolume) {
         mVolumes.put(usbVolume.getId(), usbVolume);
     }

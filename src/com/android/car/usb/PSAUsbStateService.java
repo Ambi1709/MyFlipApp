@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 
 import android.content.IntentFilter;
 
+import static android.app.Notification.Builder;
+
 
 public class PSAUsbStateService extends Service {
 
@@ -134,12 +136,14 @@ public class PSAUsbStateService extends Service {
 
     private void onScanFinished(DiskInfo disk, int volumeCount) {
         UsbDevice usbDevice = mUsbDevices.get(disk.id);
-        if (usbDevice != null) {
-            if (volumeCount == 0 && disk.size > 0) {
-                notify(usbDevice.getId(), buildBadUsbNotification());
-            } else {
-                cancelNotify(SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK);
-            }
+        if (usbDevice == null) {
+            usbDevice = new UsbDevice(++sLastUsbDeviceId, disk.id, disk.label, disk.getDescription());
+            mUsbDevices.put(usbDevice.getDeviceId(), usbDevice);
+        }
+        if (volumeCount == 0 && disk.size > 0) {
+            notify(usbDevice.getId(), buildBadUsbNotification());
+        } else {
+            cancelNotify(SystemMessageProto.SystemMessage.NOTE_STORAGE_DISK);
         }
     }
 
@@ -235,17 +239,18 @@ public class PSAUsbStateService extends Service {
     }
 
     private Notification buildBadUsbNotification() {
-        return new Notification.Builder(getApplicationContext(), mChannel.getId())
+        return new Builder(getApplicationContext(), mChannel.getId())
                 .setChannelId(NOTIFICATION_CHANNEL_ID).setStyle(new Notification.MediaStyle())
                 .setContentTitle(getString(R.string.psa_general_notification_title_usb))
                 .setContentText(getString(R.string.psa_general_notification_content_usb))
                 .setSmallIcon(R.drawable.psa_general_media_center_picto_style)
                 .setAutoCancel(true)
+                .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(), 0))
                 .build();
     }
 
     private Notification buildNotification() {
-        return new Notification.Builder(getApplicationContext(), mChannel.getId())
+        return new Builder(getApplicationContext(), mChannel.getId())
                 .setChannelId(NOTIFICATION_CHANNEL_ID).setStyle(new Notification.MediaStyle())
                 .setContentTitle(getString(R.string.psa_general_notification_title))
                 .setContentText(getString(R.string.psa_general_notification_content, mWaitingNotify.getName()))
