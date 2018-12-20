@@ -43,12 +43,12 @@ public class SubFragment extends Fragment {
     public enum Type {ALBUM, ARTIST, SONG}
 
     private static final String TYPE_ARGUMENT = "type_argument";
-    private static final String PATH = "PATH";
+    public static final String PATH = "PATH";
     public static final String TYPE_ITEM = "type_item";
     public static final String TYPE_ITEM_ALBUM = "type_item_album";
     public static final String TYPE_ITEM_ARTIST = "type_item_artist";
     public static final String TYPE_ITEM_SONG = "type_item_song";
-    private static final int INVALID_ID = -1;
+    public static final int INVALID_ID = -1;
     public static final String ITEM_ID = "ID";
 
     private static final Uri ART_BASE_URI = Uri.parse("content://media/external/audio/albumart");
