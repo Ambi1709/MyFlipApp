@@ -252,6 +252,25 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         }
 
         setIntent(intent);
+        Bundle bundle = null;
+        if (intent != null) {
+            bundle = intent.getBundleExtra(MediaWidget1x1.PLAY_FROM_WIDGET);
+        }
+        if (bundle != null) {
+            if(mMediaPlaybackModel != null) {
+                if (mMediaPlaybackModel.isConnected()) {
+                    MediaController.TransportControls transportControls =
+                            mMediaPlaybackModel.getTransportControls();
+                    if (transportControls != null) {
+                        transportControls.playFromMediaId(bundle.getString(SubFragment.ITEM_ID),
+                                bundle);
+                        setIntent(null);
+                    }
+                } else {
+                    mMediaPlaybackModel.restart();
+                }
+            }
+        }
     }
 
 

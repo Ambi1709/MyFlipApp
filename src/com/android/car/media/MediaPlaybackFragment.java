@@ -503,7 +503,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     @Override
     public void onMediaConnectionFailed(CharSequence failedClientName) {
         Assert.isMainThread();
-        showInitialNoContentView(getString(R.string.cannot_connect_to_app, failedClientName),
+        showInitialNoContentView(getString(R.string.nothing_to_play, failedClientName),
                 true /* isError */);
         mReturnFromOnStop = false;
     }
@@ -641,7 +641,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         Assert.isMainThread();
         mHandler.removeCallbacks(mSeekBarRunnable);
         showInitialNoContentView(
-                getString(R.string.cannot_connect_to_app, destroyedMediaClientName), true);
+                getString(R.string.nothing_to_play, destroyedMediaClientName), true);
     }
 
     /**
