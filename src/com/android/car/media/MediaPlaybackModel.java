@@ -186,6 +186,12 @@ public class MediaPlaybackModel {
     }
 
     @MainThread
+    public void restart(){
+        stop();
+        start();
+    }
+
+    @MainThread
     public void stop() {
         Assert.isMainThread();
         MediaManager.getInstance(mContext).removeListener(mMediaManagerListener);

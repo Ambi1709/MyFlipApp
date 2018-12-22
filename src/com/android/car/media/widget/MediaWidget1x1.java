@@ -57,7 +57,7 @@ public class MediaWidget1x1 extends PSAIconWidget {
                 .R.layout.psa_icon_widget);
         Intent intent = new Intent(context, MediaActivity.class);
         intent.putExtra(PLAY_FROM_WIDGET, itemData.getExtras());
-        intent.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent pendingIntent = PendingIntent.getActivity(context, appWidgetId, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
         remoteViews.setOnClickPendingIntent(com.harman.psa.widget.R.id.root, pendingIntent);
