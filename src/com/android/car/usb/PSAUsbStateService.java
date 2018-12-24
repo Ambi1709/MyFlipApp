@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.*;
 import android.os.storage.*;
 import com.android.car.media.R;
@@ -261,6 +262,7 @@ public class PSAUsbStateService extends Service {
         extras.putString(USB_SOURCE_ID, usbSourceId);
         intent.putExtras(extras);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        intent.setData(Uri.parse("carmedia://usbsource?id=" + usbSourceId));
         return PendingIntent.getActivity(this, 0, intent, 0);
     }
 
