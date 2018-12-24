@@ -240,7 +240,7 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     public void onItemClick(DropdownItem item) {
         mDropdownDialog = null;
         item.setSelected(true);
-        UsbDevice usbDevice = mUsbNotificationService.getUsbDeviceById(item.getItemId());
+        UsbDevice usbDevice = mUsbNotificationService.getUsbDeviceByDeviceId(item.getId());
         if (usbDevice != null) {
             mSourceId = usbDevice.getDeviceId();
             final MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
