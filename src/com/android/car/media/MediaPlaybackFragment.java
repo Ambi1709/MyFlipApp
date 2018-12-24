@@ -4,7 +4,6 @@ import android.annotation.TargetApi;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -22,7 +21,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.UserManager;
-import android.os.IBinder;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
@@ -52,14 +50,12 @@ import com.android.car.media.util.widgets.PlayPauseStopImageView;
 import com.android.car.usb.PSAUsbStateService;
 import com.android.car.usb.UsbDevice;
 import com.harman.psa.widget.PSAAppBarButton;
-import com.harman.psa.widget.PSABaseFragment;
 import com.harman.psa.widget.button.OnCycleChangeListener;
 import com.harman.psa.widget.button.PSACyclicButton;
 import com.harman.psa.widget.dropdowns.DropdownButton;
 import com.harman.psa.widget.dropdowns.DropdownDialog;
 import com.harman.psa.widget.dropdowns.DropdownHelper;
 import com.harman.psa.widget.dropdowns.DropdownItem;
-import com.harman.psa.widget.dropdowns.listener.OnDismissListener;
 import com.harman.psa.widget.dropdowns.listener.OnDropdownButtonClickEventListener;
 import com.harman.psa.widget.dropdowns.listener.OnDropdownItemClickListener;
 import com.harman.psa.widget.toast.PSAToast;
@@ -74,8 +70,6 @@ import android.Manifest;
 import java.util.ArrayList;
 
 import android.app.ActivityManager;
-
-import static android.content.Context.BIND_AUTO_CREATE;
 
 /**
  * Fragment that displays the media playback UI.
@@ -1365,6 +1359,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
                         if (controls != null && !children.isEmpty()) {
                             MediaBrowser.MediaItem mediaItem = children.get(0);
                             controls.playFromMediaId(mediaItem.getMediaId(), mediaItem.getDescription().getExtras());
+                            mMediaPlaybackModel.getMediaBrowser().unsubscribe(parentId);
                         } else if (controls == null && !children.isEmpty()) {
                             mIsWaitingConnection = true;
                             mMediaId = children.get(0).getMediaId();
@@ -1412,6 +1407,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
                                     if (controls != null) {
                                         controls.pause();
                                         controls.playFromMediaId(itemM.getMediaId(), itemM.getDescription().getExtras());
+                                        mMediaPlaybackModel.getMediaBrowser().unsubscribe(parentId);
                                     }
                                 }
                             }
