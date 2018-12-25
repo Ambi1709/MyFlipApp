@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -333,8 +334,15 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         if (isSearchIntent(intent)) {
             MediaManager.getInstance(this).processSearchIntent(intent);
             setIntent(null);
-        } else if (extras != null && extras.containsKey(PSAUsbStateService.USB_SOURCE_ID)) {
-            mNavigationManager.openPlayerTab(extras.getString(PSAUsbStateService.USB_SOURCE_ID));
+        } else {
+            if (extras != null && extras.containsKey(PSAUsbStateService.USB_SOURCE_ID)) {
+                mNavigationManager.openPlayerTab(extras.getString(PSAUsbStateService.USB_SOURCE_ID));
+            } else if (intent != null && intent.getData() != null) {
+                String usbSourceId = intent.getData().getQueryParameter("usbsource");
+                if (!TextUtils.isEmpty(usbSourceId)) {
+                    mNavigationManager.openPlayerTab(usbSourceId);
+                }
+            }
         }
     }
 
