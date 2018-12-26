@@ -1,6 +1,5 @@
 package com.android.car.media;
 
-
 import android.content.Context;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -53,6 +52,8 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
 
     private boolean mShowSubtitles = true;
 
+    private boolean mIsEditMode;
+
     public LibraryCategoryVerticalListAdapter(OnItemClickListener listener) {
         mItemClickListener = listener;
     }
@@ -60,7 +61,7 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int viewType) {
-        
+
         RecyclerView.ViewHolder holder;
         switch (viewType) {
             case SECTION_TYPE:
@@ -90,7 +91,11 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
                 ((MultiActionItemView) (viewHolder.itemView)).setAction2ClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        showDropdownDialog(view, value);
+                        if (!mIsEditMode) {
+                            showDropdownDialog(view, value);
+                        } else {
+                            mItemClickListener.onItemClicked(value);
+                        }
                     }
                 });
             }
@@ -112,6 +117,12 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
                         }
                     }
                 });
+            }
+
+            if (mIsEditMode) {
+                viewHolder.itemView.setBackgroundResource(R.drawable.psa_general_generic_state_container_focus);
+            } else {
+                viewHolder.itemView.setBackground(null);
             }
 
         } else if (viewHolder instanceof SectionViewHolder) {
@@ -263,6 +274,11 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
 
     public void hideSubtitles(boolean hideSubtitles) {
         mShowSubtitles = !hideSubtitles;
+    }
+
+    public void setEditModeEnabled(boolean isEditModeEnabled) {
+        mIsEditMode = isEditModeEnabled;
+        notifyDataSetChanged();
     }
 
 

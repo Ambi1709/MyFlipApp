@@ -1,14 +1,20 @@
 package com.android.car.media;
 
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.media.browse.MediaBrowser;
 import android.media.session.MediaController;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -68,6 +74,11 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     private LibraryCategoryVerticalListAdapter mRecentlyPlayedListAdapter;
     private TextView mRecentlyPlayedTextView;
 
+    private boolean mIsEditMode;
+    private Handler mEdgeHandler = new Handler();
+    private int mEdgePosition = MediaConstants.UNDEFINED_EDGE_POSITION;
+    private MediaNavigationManager mNavigationManager;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,13 +91,25 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
         mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
         mMediaLibraryController = ((MediaActivity) getHostActivity()).getLibraryController();
 
+        mNavigationManager = ((MediaActivity) getHostActivity()).getNavigationManagerImpl();
+
         mMediaLibraryController.addListener(this);
         mMediaLibraryController.updateRootElements();
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        getContext().registerReceiver(mBroadcastReceiver, new IntentFilter("com.harman.edge.EDGE"));
+    }
+
+    @Override
     public void onStop() {
         super.onStop();
+        if (mBroadcastReceiver != null) {
+            getContext().unregisterReceiver(mBroadcastReceiver);
+        }
+        mEdgeHandler.removeCallbacksAndMessages(null);
         mMediaLibraryController.unsubscribe();
         mMediaLibraryController.removeListener(this);
     }
@@ -264,48 +287,50 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     /* Category */
     @Override
     public void onItemClicked(LibraryCategoryGridItemData data) {
-        Log.d(TAG, "Category clicked " + data.getItemId());
-        mMediaLibraryController.saveRootCategory(data.getItemId());
+        if (!mIsEditMode) {
+            Log.d(TAG, "Category clicked " + data.getItemId());
+            mMediaLibraryController.saveRootCategory(data.getItemId());
 
-        String fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_LIST;
-        boolean playShuffleActionAvailable = false;
-        String playShuffleActionText = null;
-        String headerText = data.getPrimaryText();
-        String subtitleText = null;
-        String mediaId = data.getItemId();
-        String rootCategory = data.getItemId();
-        boolean isUsbDeviceRoot = false;
-        boolean isUsbDeviceBrowsing = false;
-        String usbDeviceId = null;
-        if (data.getItemId().equals(MediaLibraryController.ALBUMS_ID)) {
-            /* Albums showed in grid list*/
-            fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_GRID;
-        } else if (MediaLibraryController.FOLDERS_ID.equals(data.getItemId())) {
-            fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_USB_SOURCES;
-            isUsbDeviceBrowsing = true;
-        } else {
-            if (data.getItemId().equals(MediaLibraryController.ARTISTS_ID)) {
-                /* Shuffle all action is available for artists list*/
-                Bundle extras = data.getExtras();
-                if (extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false) == true) {
-                    playShuffleActionAvailable = true;
-                    playShuffleActionText = extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
-                            getContext().getResources().getString(R.string.library_category_play_shuffle));
+            String fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_LIST;
+            boolean playShuffleActionAvailable = false;
+            String playShuffleActionText = null;
+            String headerText = data.getPrimaryText();
+            String subtitleText = null;
+            String mediaId = data.getItemId();
+            String rootCategory = data.getItemId();
+            boolean isUsbDeviceRoot = false;
+            boolean isUsbDeviceBrowsing = false;
+            String usbDeviceId = null;
+            if (data.getItemId().equals(MediaLibraryController.ALBUMS_ID)) {
+                /* Albums showed in grid list*/
+                fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_GRID;
+            } else if (MediaLibraryController.FOLDERS_ID.equals(data.getItemId())) {
+                fragmentType = MediaLibraryFragment.FRAGMENT_TYPE_USB_SOURCES;
+                isUsbDeviceBrowsing = true;
+            } else {
+                if (data.getItemId().equals(MediaLibraryController.ARTISTS_ID)) {
+                    /* Shuffle all action is available for artists list*/
+                    Bundle extras = data.getExtras();
+                    if (extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false) == true) {
+                        playShuffleActionAvailable = true;
+                        playShuffleActionText = extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
+                                getContext().getResources().getString(R.string.library_category_play_shuffle));
+                    }
                 }
             }
-        }
 
-        getNavigationManager().showFragment(
-                MediaLibraryFragment.newCategoryInstance(fragmentType,
-                        playShuffleActionAvailable,
-                        playShuffleActionText,
-                        headerText,
-                        subtitleText,
-                        mediaId,
-                        rootCategory,
-                        isUsbDeviceRoot,
-                        isUsbDeviceBrowsing,
-                        usbDeviceId));
+            getNavigationManager().showFragment(
+                    MediaLibraryFragment.newCategoryInstance(fragmentType,
+                            playShuffleActionAvailable,
+                            playShuffleActionText,
+                            headerText,
+                            subtitleText,
+                            mediaId,
+                            rootCategory,
+                            isUsbDeviceRoot,
+                            isUsbDeviceBrowsing,
+                            usbDeviceId));
+        }
     }
 
     public void onRootItemsUpdated(List<LibraryCategoryGridItemData> result) {
@@ -342,10 +367,17 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     /* Recently played list */
     @Override
     public void onItemClicked(ItemData data) {
-        Bundle extras = data.getExtras();
-        if (extras != null) {
-            extras.putBoolean(MediaLibraryController.MAKE_LAST_PLAYED_PLAYLIST_QUEUE_KEY, true);
-            mMediaLibraryController.playMediaItem(data);
+        if (mIsEditMode) {
+            mEdgeHandler.removeCallbacksAndMessages(null);
+            sendEditModeAction(MediaConstants.EDGE_ACTION_PLAY_ITEM, mEdgePosition, "com.harman.psa.magic_touch_action_play_item",
+                    "com.harman.psa.magic_touch_action_play_item_image", data);
+            disableEditMode();
+        } else {
+            Bundle extras = data.getExtras();
+            if (extras != null) {
+                extras.putBoolean(MediaLibraryController.MAKE_LAST_PLAYED_PLAYLIST_QUEUE_KEY, true);
+                mMediaLibraryController.playMediaItem(data);
+            }
         }
     }
 
@@ -369,6 +401,94 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
                     });
         }
         /***** Temporary *****/
+    }
+
+    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int position = intent.getIntExtra(MediaConstants.EDGE_SHORTCUT_POSITION, MediaConstants.UNDEFINED_EDGE_POSITION);
+            String action = intent.getStringExtra(MediaConstants.EDGE_SHORTCUT_ACTION);
+            String appKey = intent.getStringExtra(MediaConstants.APP_KEY);
+            if (TextUtils.isEmpty(action) || MediaConstants.MAGIC_TOUCH_APP_KEY.equals(appKey)) {
+                showEditMode(position);
+            }
+        }
+    };
+
+    private void showEditMode(final int position) {
+        mEdgeHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                disableEditMode();
+            }
+        }, MediaConstants.EDIT_MODE_TIMEOUT);
+
+        mEdgePosition = position;
+
+        mIsEditMode = true;
+
+        mNavigationManager.setTabBarEnabled(false);
+        ((MediaActivity) getHostActivity()).setEnabledAppBarButtons(false);
+
+        mRecentlyPlayedListAdapter.setEditModeEnabled(true);
+
+    }
+
+    private void disableEditMode() {
+        mIsEditMode = false;
+        mRecentlyPlayedListAdapter.setEditModeEnabled(false);
+        mEdgePosition = MediaConstants.UNDEFINED_EDGE_POSITION;
+
+        mNavigationManager.setTabBarEnabled(true);
+        ((MediaActivity) getHostActivity()).setEnabledAppBarButtons(true);
+
+        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
+    }
+
+    private void sendEditModeAction(String action, int position, String titleMetaName, String iconMetaName, ItemData item) {
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName(MediaConstants.EDGE_SERVICE_PACKAGE, MediaConstants.EDGE_SERVICE_CLASS));
+        Bundle data = new Bundle();
+        Intent playIntent = new Intent();
+        Bundle playIntentExtras = new Bundle();
+        if (position == MediaConstants.UNDEFINED_EDGE_POSITION) {
+            data.putString(MediaConstants.APP_KEY, MediaConstants.MAGIC_TOUCH_APP_KEY);
+            playIntentExtras.putString(MediaConstants.APP_KEY, MediaConstants.MAGIC_TOUCH_APP_KEY);
+        } else {
+            data.putString(MediaConstants.APP_KEY, MediaConstants.EDGE_APP_KEY);
+            data.putInt(MediaConstants.EDGE_SHORTCUT_POSITION, position);
+            playIntentExtras.putString(MediaConstants.APP_KEY, MediaConstants.EDGE_APP_KEY);
+        }
+
+        playIntent.setComponent(new ComponentName("com.android.car.media", "com.android.car.media.MediaActivity"));
+
+        if (MediaConstants.EDGE_ACTION_PLAY_ITEM.equals(action)) {
+            playIntentExtras = new Bundle(item.getExtras());
+            playIntentExtras.putString(MediaConstants.MEDIA_ID_EXTRA_KEY, item.getId());
+            data.putString(MediaConstants.CONTACT, item.getPrimaryText());
+        } else {
+            data.putString(MediaConstants.CONTACT, "");
+        }
+
+        playIntentExtras.putInt(MediaConstants.EDGE_SHORTCUT_POSITION, position);
+        playIntentExtras.putString(MediaConstants.EDGE_SHORTCUT_ACTION, action);
+
+        playIntent.putExtras(playIntentExtras);
+
+
+        data.putString(MediaConstants.APP_PACKAGE, "com.android.car.media");
+        data.putString(MediaConstants.RES_ACTION_NAME, titleMetaName);
+        data.putString(MediaConstants.RES_ACTION_ON, playIntent.toUri(0));
+        data.putString(MediaConstants.RES_ACTION_OFF, "");
+        data.putString(MediaConstants.RES_ACTION_ICON, "");
+        data.putString(MediaConstants.RES_ICON_ACTION_ON, iconMetaName);
+        data.putString(MediaConstants.RES_ICON_ACTION_OFF, "");
+
+        data.putString(MediaConstants.ACTION_CODE, action);
+        int actionDataType = 0;
+        data.putInt(MediaConstants.DATA_TYPE, actionDataType);
+        intent.putExtras(data);
+        getContext().startService(intent);
     }
 
 }

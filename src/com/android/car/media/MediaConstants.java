@@ -110,4 +110,34 @@ public class MediaConstants {
     public static final String SOURCE_TYPE_IPOD = "ipod";
     public static final String SOURCE_TYPE_DISC = "disc";
     public static final String SOURCE_TYPE_FOLDER = "folder";
+
+
+    /* Magic Touch / Edge constants */
+    public static final long EDIT_MODE_TIMEOUT = 15000;
+    public static final int UNDEFINED_EDGE_POSITION = -1;
+    public static final String EDGE_SERVICE_PACKAGE = "com.harman.psashortcut";
+    public static final String EDGE_SERVICE_CLASS = EDGE_SERVICE_PACKAGE + ".ShortcutEditService";
+    public static final String BROADCAST_MAGIC_TOUCH_EDIT_MODE = "com.harman.magic_touch.EDIT_MODE";
+    public static final String APP_KEY = "appKey";
+    public static final String EDGE_APP_KEY = "EDGE";
+    public static final String MAGIC_TOUCH_APP_KEY = "MAGIC_TOUCH";
+    public static final String EDGE_SHORTCUT_POSITION = "position";
+    public static final String EDGE_SHORTCUT_ACTION = "action";
+    public static final String ACTION_CODE = "actionCode";
+    public static final String APP_PACKAGE = "appPackage";
+    public static final String RES_ACTION_NAME = "resActionName";
+    public static final String RES_ACTION_ON = "resActionOn";
+    public static final String RES_ACTION_OFF = "resActionOff";
+    public static final String RES_ACTION_ICON = "resActionIcon";
+    public static final String RES_ICON_ACTION_ON = "resIconActionOn";
+    public static final String RES_ICON_ACTION_OFF = "resIconActionOff";
+    public static final String CONTACT = "contact";
+    public static final String DATA_TYPE = "dataType";
+    public static final String BLOB_DATA = "blobData";
+    public static final String MEDIA_ID_EXTRA_KEY = "MEDIA_ID";
+    public static final String ROOT_CATEGORY_EXTRA_KEY = "ROOT_CATEGORY";
+
+    public static final String EDGE_ACTION_PLAY_ITEM = "PLAY_ITEM";
+    public static final String EDGE_ACTION_START_PLAY= "START_PLAY";
+    public static final String EDGE_ACTION_PLAY_NEXT= "PLAY_NEXT";
 }

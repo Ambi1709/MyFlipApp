@@ -30,6 +30,8 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private OnItemClickListener mItemClickListener;
     private Context mContext;
 
+    private boolean mIsEditMode;
+
     public void setContext(Context context) {
         mContext = context;
     }
@@ -95,6 +97,12 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
                 }
             }
         });
+
+        if (mIsEditMode) {
+            viewHolder.itemView.setBackgroundResource(R.drawable.psa_general_generic_state_container_focus);
+        } else {
+            viewHolder.itemView.setBackground(null);
+        }
     }
 
 
@@ -112,6 +120,11 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
     public int getItemViewType(int position) {
         int viewType = -1;
         return viewType;
+    }
+
+    public void setEditModeEnabled(boolean isEditModeEnabled) {
+        mIsEditMode = isEditModeEnabled;
+        notifyDataSetChanged();
     }
 
 }
