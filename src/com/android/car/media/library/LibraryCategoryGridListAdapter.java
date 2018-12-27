@@ -33,6 +33,8 @@ public class LibraryCategoryGridListAdapter extends RecyclerView.Adapter<Library
      */
     private LibraryCategoryGridListItemClickListener mOnClickListener;
 
+    private boolean mIsEditMode;
+
     /**
      * Interface to declare method for click event handling
      */
@@ -59,7 +61,7 @@ public class LibraryCategoryGridListAdapter extends RecyclerView.Adapter<Library
             mView = v.findViewById(R.id.grid_text_item_view);
         }
 
-        void setData(ItemData data, final LibraryCategoryGridListItemClickListener onClickListener) {
+        void setData(ItemData data, final LibraryCategoryGridListItemClickListener onClickListener, boolean isInEditMode) {
             mData = data;
             mView.setCoverImage(mView.getContext().getResources().getDrawable(data.getAction1ResId()));
             if (data.getAction1DrawableUri() != null) {
@@ -78,6 +80,12 @@ public class LibraryCategoryGridListAdapter extends RecyclerView.Adapter<Library
                     onClickListener.onItemClicked(mData);
                 }
             });
+
+            if (isInEditMode) {
+                mView.setBackgroundResource(R.drawable.psa_general_generic_state_container_focus);
+            } else {
+                mView.setBackground(null);
+            }
         }
     }
 
@@ -102,7 +110,7 @@ public class LibraryCategoryGridListAdapter extends RecyclerView.Adapter<Library
 
     @Override
     public void onBindViewHolder(@NonNull LibraryCategoryGridListAdapter.ViewHolder holder, int position) {
-        holder.setData(mDataList.get(position), mOnClickListener);
+        holder.setData(mDataList.get(position), mOnClickListener, mIsEditMode);
     }
 
     @Override
@@ -145,5 +153,10 @@ public class LibraryCategoryGridListAdapter extends RecyclerView.Adapter<Library
                 }
             }
         }
+    }
+
+    public void setEditModeEnabled(boolean isEditModeEnabled) {
+        mIsEditMode = isEditModeEnabled;
+        notifyDataSetChanged();
     }
 }

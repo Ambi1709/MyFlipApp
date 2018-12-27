@@ -21,13 +21,12 @@ import android.widget.Toast;
 
 import com.android.car.media.widget.MediaWidget1x1;
 import com.android.car.media.widget.SubFragment;
+import com.android.car.usb.PSAUsbStateService;
 import com.harman.psa.widget.PSAAppBarButton;
 import com.harman.psa.widget.PSABaseActivity;
 import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
 import com.harman.psa.widget.toast.PSAToast;
-
-import com.android.car.usb.PSAUsbStateService;
 
 import java.util.List;
 
@@ -256,19 +255,27 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         Bundle bundle = null;
         if (intent != null) {
             bundle = intent.getBundleExtra(MediaWidget1x1.PLAY_FROM_WIDGET);
-        }
-        if (bundle != null) {
-            if(mMediaPlaybackModel != null) {
-                if (mMediaPlaybackModel.isConnected()) {
-                    MediaController.TransportControls transportControls =
-                            mMediaPlaybackModel.getTransportControls();
-                    if (transportControls != null) {
-                        transportControls.playFromMediaId(bundle.getString(SubFragment.ITEM_ID),
-                                bundle);
-                        setIntent(null);
+            if (bundle != null) {
+                if (mMediaPlaybackModel != null) {
+                    if (mMediaPlaybackModel.isConnected()) {
+                        MediaController.TransportControls transportControls =
+                                mMediaPlaybackModel.getTransportControls();
+                        if (transportControls != null) {
+                            transportControls.playFromMediaId(bundle.getString(SubFragment.ITEM_ID),
+                                    bundle);
+                            setIntent(null);
+                        }
+                    } else {
+                        mMediaPlaybackModel.restart();
                     }
-                } else {
-                    mMediaPlaybackModel.restart();
+                }
+            } else {
+                int position = intent.getIntExtra(MediaConstants.EDGE_SHORTCUT_POSITION, -1);
+                String action = intent.getStringExtra(MediaConstants.EDGE_SHORTCUT_ACTION);
+                String appKey = intent.getStringExtra(MediaConstants.APP_KEY);
+                Bundle extras = intent.getExtras();
+                if (!TextUtils.isEmpty(action) && !MediaConstants.MAGIC_TOUCH_APP_KEY.equals(appKey)) {
+                    mMediaPlaybackModel.reactEdgeAction(action, extras);
                 }
             }
         }
@@ -277,6 +284,10 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
 
     @Override
     public PSABaseNavigationManager getBaseNavigationManager() {
+        return mNavigationManager;
+    }
+
+    public MediaNavigationManager getNavigationManagerImpl() {
         return mNavigationManager;
     }
 
@@ -386,6 +397,21 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         getAppBarView().replaceAppBarButton(mAppSwitchButton);
     }
 
+    public void setEnabledAppBarButtons(boolean isEnabled) {
+        View v1 = getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_1).getChildAt(0);
+        if (v1 != null) v1.setEnabled(isEnabled);
+
+        // app switch disabled every time so far
+        // getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_2).setEnabled(isEnabled);
+        View v2 = getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_2).getChildAt(0);
+        if (v2 != null) v2.setEnabled(false);
+
+        View v3 = getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_3).getChildAt(0);
+        if (v3 != null) v3.setEnabled(isEnabled);
+        View v4 = getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_4).getChildAt(0);
+        if (v4 != null) v4.setEnabled(isEnabled);
+    }
+
     public MediaPlaybackModel getPlaybackModel() {
         return mMediaPlaybackModel;
     }
@@ -397,14 +423,21 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         Bundle bundle = null;
         if (intent != null) {
             bundle = intent.getBundleExtra(MediaWidget1x1.PLAY_FROM_WIDGET);
-        }
-        if (bundle != null) {
-            MediaController.TransportControls transportControls =
-                    mMediaPlaybackModel.getTransportControls();
-            transportControls.playFromMediaId(bundle.getString(SubFragment.ITEM_ID),
-                    bundle);
+            if (bundle != null) {
+                MediaController.TransportControls transportControls =
+                        mMediaPlaybackModel.getTransportControls();
+                transportControls.playFromMediaId(bundle.getString(SubFragment.ITEM_ID),
+                        bundle);
 
-            setIntent(null);
+                setIntent(null);
+            } else {
+                String action = intent.getStringExtra(MediaConstants.EDGE_SHORTCUT_ACTION);
+                String appKey = intent.getStringExtra(MediaConstants.APP_KEY);
+                Bundle extras = intent.getExtras();
+                if (!TextUtils.isEmpty(action) && !MediaConstants.MAGIC_TOUCH_APP_KEY.equals(appKey)) {
+                    mMediaPlaybackModel.reactEdgeAction(action, extras);
+                }
+            }
         }
 
     }
@@ -449,5 +482,9 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
     @Override
     public void onSessionDestroyed(CharSequence destroyedMediaClientName) {
 
+    }
+
+    @Override
+    public void onEdgeActionReceived(String action, Bundle extras) {
     }
 }

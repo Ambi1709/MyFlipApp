@@ -153,4 +153,10 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
         refreshTabLabels();
         showFragment(MediaPlaybackFragment.newInstance(sourceId));
     }
+
+    public void setTabBarEnabled(boolean isEnabled) {
+        for (int i = 0; i < MediaTab.values().length; ++i) {
+            mTabBarManager.getTabAt(i).enable(isEnabled);
+        }
+    }
 }

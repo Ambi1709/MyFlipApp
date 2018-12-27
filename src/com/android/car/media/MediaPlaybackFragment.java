@@ -1,16 +1,20 @@
 package com.android.car.media;
 
 import android.annotation.TargetApi;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.InsetDrawable;
+import android.media.MediaDescription;
 import android.media.MediaMetadata;
 import android.media.browse.MediaBrowser;
 import android.media.session.MediaController;
@@ -32,6 +36,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -60,6 +65,7 @@ import com.harman.psa.widget.dropdowns.listener.OnDropdownButtonClickEventListen
 import com.harman.psa.widget.dropdowns.listener.OnDropdownItemClickListener;
 import com.harman.psa.widget.toast.PSAToast;
 
+import java.io.ByteArrayOutputStream;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -70,6 +76,8 @@ import android.Manifest;
 import java.util.ArrayList;
 
 import android.app.ActivityManager;
+
+import static com.android.car.media.MediaLibraryController.MAKE_NEW_QUEUE_KEY;
 
 /**
  * Fragment that displays the media playback UI.
@@ -229,6 +237,12 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
     private Bundle mMediaExtras;
 
+
+    private boolean mIsEditMode;
+    private Handler mEdgeHandler = new Handler();
+
+    private MediaNavigationManager mNavigationManager;
+
     public static MediaPlaybackFragment newInstance(String usbSourceId) {
         MediaPlaybackFragment mediaPlaybackFragment = new MediaPlaybackFragment();
         Bundle args = new Bundle();
@@ -256,8 +270,11 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     }
 
     @Override
-    public void onActivityCreated(Bundle bundle){
+    public void onActivityCreated(Bundle bundle) {
         super.onActivityCreated(bundle);
+
+        mNavigationManager = ((MediaActivity) getHostActivity()).getNavigationManagerImpl();
+
         mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
         mMediaPlaybackModel.addListener(this);
 
@@ -282,6 +299,13 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         onQueueChanged(mMediaPlaybackModel.getQueue());
         onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
     }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        getContext().registerReceiver(mBroadcastReceiver, new IntentFilter("com.harman.edge.EDGE"));
+    }
+
 
     @Override
     public void onDestroy() {
@@ -442,6 +466,10 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         // When switch apps, onStop() will be called. Mark it and don't show fade in/out title and
         // background animations when come back.
         mReturnFromOnStop = true;
+        if (mBroadcastReceiver != null) {
+            getContext().unregisterReceiver(mBroadcastReceiver);
+        }
+        mEdgeHandler.removeCallbacksAndMessages(null);
     }
 
 
@@ -481,7 +509,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mReturnFromOnStop = false;
         if (mIsWaitingConnection) {
             MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-            if (controls != null ) {
+            if (controls != null) {
                 controls.playFromMediaId(mMediaId, mMediaExtras);
             }
             mIsWaitingUsbService = false;
@@ -636,6 +664,11 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mHandler.removeCallbacks(mSeekBarRunnable);
         showInitialNoContentView(
                 getString(R.string.nothing_to_play, destroyedMediaClientName), true);
+    }
+
+    @Override
+    public void onEdgeActionReceived(String action, Bundle extras) {
+        reactEdgeAction(action, extras);
     }
 
     /**
@@ -1279,7 +1312,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         //Set listener for action item clicked
         mDropdownDialog.setOnActionItemClickListener(this);
 
-        mDropdownDialog.setOnDismissListener(() -> { mDropdownDialog = null; });
+        mDropdownDialog.setOnDismissListener(() -> {
+            mDropdownDialog = null;
+        });
         mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
     }
 
@@ -1442,4 +1477,172 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         Log.i(TAG, "Service is not running");
         return false;
     }
+
+    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int position = intent.getIntExtra(MediaConstants.EDGE_SHORTCUT_POSITION, -1);
+            String action = intent.getStringExtra(MediaConstants.EDGE_SHORTCUT_ACTION);
+            String appKey = intent.getStringExtra(MediaConstants.APP_KEY);
+            if (TextUtils.isEmpty(action) || MediaConstants.MAGIC_TOUCH_APP_KEY.equals(appKey)) {
+                showEditMode(position);
+            }
+        }
+    };
+
+
+    private void reactEdgeAction(String action, Bundle extras) {
+        MediaController.TransportControls transportControls =
+                mMediaPlaybackModel.getTransportControls();
+        if (action.equals(MediaConstants.EDGE_ACTION_START_PLAY)) {
+            if (transportControls != null) {
+                transportControls.play();
+            }
+        } else if (action.equals(MediaConstants.EDGE_ACTION_PLAY_NEXT)) {
+            mNextButton.performClick();
+        } else if (action.equals(MediaConstants.EDGE_ACTION_PLAY_ITEM)) {
+            String mediaId = extras.getString(MediaConstants.MEDIA_ID_EXTRA_KEY);
+            if (!TextUtils.isEmpty(mediaId)) {
+                extras.putBoolean(MAKE_NEW_QUEUE_KEY, true);
+                int itemType = extras.getInt(com.android.car.media.MediaLibraryController.MEDIA_ITEM_TYPE_KEY, -1);
+                String rootCategoryId = extras.getString(MediaConstants.ROOT_CATEGORY_EXTRA_KEY, "");
+                mMediaPlaybackModel.playItemAction(mediaId, itemType, rootCategoryId, extras);
+            }
+        }
+    }
+
+    private void showEditMode(final int position) {
+        mEdgeHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                disableEditMode();
+            }
+        }, MediaConstants.EDIT_MODE_TIMEOUT);
+
+        mIsEditMode = true;
+
+        mNavigationManager.setTabBarEnabled(false);
+        ((MediaActivity) getHostActivity()).setEnabledAppBarButtons(false);
+        mShuffleButton.setEnabled(false);
+        mRepeatButton.setEnabled(false);
+        mPrevButton.setEnabled(false);
+        mSeekBar.setEnabled(false);
+
+        mPlayPauseStopButton.setImageState(new int[]{android.R.attr.state_focused}, true);
+        mNextButton.setImageState(new int[]{android.R.attr.state_focused}, true);
+
+        mScrimView.setBackgroundResource(R.drawable.psa_general_generic_state_container_focus);
+        mScrimView.setAlpha(1);
+
+        mPlayPauseStopButton.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                mEdgeHandler.removeCallbacksAndMessages(null);
+                sendEditModeAction(MediaConstants.EDGE_ACTION_START_PLAY, position, "com.harman.psa.magic_touch_action_start_play",
+                        "com.harman.psa.magic_touch_action_start_play_image");
+                disableEditMode();
+                return true;
+            }
+        });
+        mNextButton.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                mEdgeHandler.removeCallbacksAndMessages(null);
+                sendEditModeAction(MediaConstants.EDGE_ACTION_PLAY_NEXT, position, "com.harman.psa.magic_touch_action_play_next",
+                        "com.harman.psa.magic_touch_action_play_next_image");
+                disableEditMode();
+                return true;
+            }
+        });
+        mScrimView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                mEdgeHandler.removeCallbacksAndMessages(null);
+                sendEditModeAction(MediaConstants.EDGE_ACTION_PLAY_ITEM, position, "com.harman.psa.magic_touch_action_play_item",
+                        "com.harman.psa.magic_touch_action_play_item_image");
+                disableEditMode();
+                return true;
+            }
+        });
+    }
+
+    private void disableEditMode() {
+        mIsEditMode = false;
+
+        mNextButton.setImageState(new int[]{android.R.attr.state_empty}, true);
+        mPlayPauseStopButton.setImageState(new int[]{android.R.attr.state_empty}, true);
+
+        mScrimView.setAlpha(mDefaultScrimAlpha);
+        mScrimView.setBackgroundColor(Color.BLACK);
+
+        mPlayPauseStopButton.setOnTouchListener(null);
+        mNextButton.setOnTouchListener(null);
+        mScrimView.setOnTouchListener(null);
+
+        mNavigationManager.setTabBarEnabled(true);
+        ((MediaActivity) getHostActivity()).setEnabledAppBarButtons(true);
+        mShuffleButton.setEnabled(true);
+        mRepeatButton.setEnabled(true);
+        mPrevButton.setEnabled(true);
+        mSeekBar.setEnabled(true);
+
+        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
+    }
+
+    private void sendEditModeAction(String action, int position, String titleMetaName, String iconMetaName) {
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName(MediaConstants.EDGE_SERVICE_PACKAGE, MediaConstants.EDGE_SERVICE_CLASS));
+        Bundle data = new Bundle();
+        Intent playIntent = new Intent();
+        Bundle playIntentExtras = new Bundle();
+        if (position == -1) {
+            data.putString(MediaConstants.APP_KEY, MediaConstants.MAGIC_TOUCH_APP_KEY);
+            playIntentExtras.putString(MediaConstants.APP_KEY, MediaConstants.MAGIC_TOUCH_APP_KEY);
+        } else {
+            data.putString(MediaConstants.APP_KEY, MediaConstants.EDGE_APP_KEY);
+            data.putInt(MediaConstants.EDGE_SHORTCUT_POSITION, position);
+            playIntentExtras.putString(MediaConstants.APP_KEY, MediaConstants.EDGE_APP_KEY);
+        }
+
+        playIntent.setComponent(new ComponentName("com.android.car.media", "com.android.car.media.MediaActivity"));
+        
+        if (MediaConstants.EDGE_ACTION_PLAY_ITEM.equals(action)) {
+            MediaDescription currentItemDescription = mMediaPlaybackModel.getCurrentQueueItemDescription();
+            if (currentItemDescription != null && currentItemDescription.getExtras() != null) {
+                playIntentExtras = new Bundle(currentItemDescription.getExtras());
+                playIntentExtras.putString(MediaConstants.MEDIA_ID_EXTRA_KEY, currentItemDescription.getMediaId());
+                data.putString(MediaConstants.CONTACT, currentItemDescription.getTitle().toString());
+                Bitmap bmp = Utils.getBitmapIcon(getContext(), currentItemDescription.getIconUri());
+                if (bmp != null) {
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    byte[] byteArray = stream.toByteArray();
+                    data.putByteArray(MediaConstants.BLOB_DATA, byteArray);
+                }
+            }
+        } else {
+            data.putString(MediaConstants.CONTACT, "");
+        }
+
+        playIntentExtras.putInt(MediaConstants.EDGE_SHORTCUT_POSITION, position);
+        playIntentExtras.putString(MediaConstants.EDGE_SHORTCUT_ACTION, action);
+
+        playIntent.putExtras(playIntentExtras);
+
+
+        data.putString(MediaConstants.APP_PACKAGE, "com.android.car.media");
+        data.putString(MediaConstants.RES_ACTION_NAME, titleMetaName);
+        data.putString(MediaConstants.RES_ACTION_ON, playIntent.toUri(0));
+        data.putString(MediaConstants.RES_ACTION_OFF, "");
+        data.putString(MediaConstants.RES_ACTION_ICON, "");
+        data.putString(MediaConstants.RES_ICON_ACTION_ON, iconMetaName);
+        data.putString(MediaConstants.RES_ICON_ACTION_OFF, "");
+
+        data.putString(MediaConstants.ACTION_CODE, action);
+        int actionDataType = 0;
+        data.putInt(MediaConstants.DATA_TYPE, actionDataType);
+        intent.putExtras(data);
+        getContext().startService(intent);
+    }
+
 }

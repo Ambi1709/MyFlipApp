@@ -129,6 +129,8 @@ public class MediaPlaybackModel {
          * Indicates that the MediaSession was destroyed. The mediaController has been released.
          */
         void onSessionDestroyed(CharSequence destroyedMediaClientName);
+
+        void onEdgeActionReceived(String action, Bundle extras);
     }
 
     /**
@@ -171,6 +173,10 @@ public class MediaPlaybackModel {
         @Override
         public void onSessionDestroyed(CharSequence destroyedMediaClientName) {
         }
+
+        @Override
+        public void onEdgeActionReceived(String action, Bundle extras) {
+        }
     }
 
     public MediaPlaybackModel(Context context, Bundle browserExtras) {
@@ -186,7 +192,7 @@ public class MediaPlaybackModel {
     }
 
     @MainThread
-    public void restart(){
+    public void restart() {
         stop();
         start();
     }
@@ -286,6 +292,16 @@ public class MediaPlaybackModel {
             return playbackState.getActiveQueueItemId();
         }
         return MediaSession.QueueItem.UNKNOWN_ID;
+    }
+
+    public MediaDescription getCurrentQueueItemDescription() {
+        List<MediaSession.QueueItem> queue = getQueue();
+        int index = (int) getActiveQueueItemId();
+        if (index != MediaSession.QueueItem.UNKNOWN_ID && queue.size() > index) {
+            MediaSession.QueueItem item = queue.get(index);
+            return item.getDescription();
+        }
+        return null;
     }
 
     public String getActiveCategoryId() {
@@ -655,5 +671,9 @@ public class MediaPlaybackModel {
             playlistBuilder.addTrack(secs, artist, title, path);
         }
         return playlistBuilder.save();
+    }
+
+    public void reactEdgeAction(String action, Bundle extras) {
+        notifyListeners((listener) -> listener.onEdgeActionReceived(action, extras));
     }
 }

@@ -21,6 +21,7 @@ import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
@@ -68,7 +69,7 @@ public class CrossfadeImageView extends FrameLayout {
     }
 
     public CrossfadeImageView(Context context, AttributeSet attrs,
-            int defStyleAttr, int defStyleRes) {
+                              int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         LayoutParams lp = new LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
@@ -110,6 +111,10 @@ public class CrossfadeImageView extends FrameLayout {
         }
     }
 
+    public Bitmap getImageBitmap() {
+        return mCurrentBitmap;
+    }
+
     @Override
     public void setBackgroundColor(int color) {
         if (mCurrentColor != null && mCurrentColor == color) {
@@ -137,19 +142,21 @@ public class CrossfadeImageView extends FrameLayout {
 
     private final Animation.AnimationListener mAnimationListener =
             new Animation.AnimationListener() {
-        @Override
-        public void onAnimationEnd(Animation animation) {
-            if (mInactiveImageView != null) {
-                mInactiveImageView.setVisibility(View.GONE);
-            }
-        }
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    if (mInactiveImageView != null) {
+                        mInactiveImageView.setVisibility(View.GONE);
+                    }
+                }
 
-        @Override
-        public void onAnimationStart(Animation animation) { }
+                @Override
+                public void onAnimationStart(Animation animation) {
+                }
 
-        @Override
-        public void onAnimationRepeat(Animation animation) { }
-    };
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+                }
+            };
 
     private void animateViews() {
         mInactiveImageView.setVisibility(View.VISIBLE);
@@ -164,5 +171,13 @@ public class CrossfadeImageView extends FrameLayout {
             mActiveImageView = mImageView1;
             mInactiveImageView = mImageView2;
         }
+    }
+
+    public void setBackgroundResource(int resource) {
+        mActiveImageView.setBackgroundResource(resource);
+    }
+
+    public void setBackground(Drawable background) {
+        mActiveImageView.setBackground(background);
     }
 }

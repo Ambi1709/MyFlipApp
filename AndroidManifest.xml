@@ -45,10 +45,10 @@
         <activity
             android:name=".MediaActivity"
             android:allowEmbedded="true"
+            android:configChanges="screenLayout|screenSize"
             android:exported="true"
             android:label="CarMediaApp"
             android:resizeableActivity="true"
-            android:configChanges="screenLayout|screenSize"
             android:supportsPictureInPicture="true"
             android:theme="@style/PSAAppNightTheme">
             <intent-filter>
@@ -69,9 +69,9 @@
 
         <receiver
             android:name=".widget.MediaWidget2x1"
-            android:label="MediaWidget2x1"
             android:exported="true"
-            android:icon="@drawable/ic_music">
+            android:icon="@drawable/ic_music"
+            android:label="MediaWidget2x1">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="android.car.media.localmediaplayer.ACTION_UPDATE_WIDGET_INFO" />
@@ -89,9 +89,9 @@
 
         <receiver
             android:name=".widget.MediaWidget1x1"
-            android:label="MediaWidget1x1"
             android:exported="true"
-            android:icon="@drawable/ic_music">
+            android:icon="@drawable/ic_music"
+            android:label="MediaWidget1x1">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="android.car.media.localmediaplayer.ACTION_UPDATE_WIDGET_INFO" />
@@ -106,5 +106,32 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+
+        <meta-data
+            android:name="com.harman.psa.magic_touch_action_play_next_image"
+            android:resource="@drawable/psa_media_button_icon_next_edge_action" />
+        <meta-data
+            android:name="com.harman.psa.magic_touch_action_play_next"
+            android:resource="@string/psa_edge_play_next_action" />
+
+        <meta-data
+            android:name="com.harman.psa.magic_touch_action_start_play_image"
+            android:resource="@drawable/psa_media_button_icon_play_edge_action" />
+        <meta-data
+            android:name="com.harman.psa.magic_touch_action_start_play"
+            android:resource="@string/psa_edge_start_play_action" />
+
+        <meta-data
+            android:name="com.harman.psa.magic_touch_action_play_item_image"
+            android:resource="@drawable/psa_media_button_icon_play_edge_action" />
+        <meta-data
+            android:name="com.harman.psa.magic_touch_action_play_item"
+            android:resource="@string/psa_edge_play_item_action" />
+        <meta-data
+            android:name="com.harman.psa.magic_touch_action_shuffle_play_item"
+            android:resource="@string/psa_edge_shuffle_play_item_action" />
+
+
     </application>
 </manifest>

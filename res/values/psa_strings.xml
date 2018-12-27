@@ -40,6 +40,15 @@
     <string name="permission_denied">Permission denied</string>
     <string name="no_data">No data</string>
     <string name="artist">Artist</string>
-    <string name="album">album</string>
-    <string name="song">song</string>
+    <string name="album">Album</string>
+    <string name="song">Song</string>
+
+
+    <!-- Megic Touch / Edge -->
+    <string name="psa_edge_play_next_action">Play Next</string>
+    <string name="psa_edge_start_play_action">Start Play</string>
+    <string name="psa_edge_play_item_action">Play %s</string>
+    <string name="psa_edge_shuffle_play_item_action">Shuffle Play %s</string>
+
+
 </resources>

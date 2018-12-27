@@ -1,8 +1,14 @@
 package com.android.car.media;
 
-
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.graphics.Bitmap;
 import android.media.browse.MediaBrowser;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentManager;
@@ -19,6 +25,7 @@ import com.android.car.usb.UsbDevice;
 import com.android.car.usb.UsbVolume;
 import com.harman.psa.widget.verticallist.model.ItemData;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,7 +71,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
 
     private List<ItemData> mSubCategoriesList = new ArrayList<>();
     private RecyclerView mRecyclerView;
-    private RecyclerView.Adapter mAdapter;
+    private LibraryCategoryGridListAdapter mAdapter;
     private LibraryCategoryVerticalListAdapter mListAdapter;
 
     private TextView mSubtitleView;
@@ -77,6 +84,11 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
     private boolean mIsUsbDeviceRoot;
 
     private boolean mIsUsbDeviceBrowsing;
+
+    private boolean mIsEditMode;
+    private Handler mEdgeHandler = new Handler();
+    private int mEdgePosition = MediaConstants.UNDEFINED_EDGE_POSITION;
+    private MediaNavigationManager mNavigationManager;
 
     public static MediaLibraryFragment newCategoryInstance(String fragmentType,
                                                            boolean playShuffleActionAvailable,
@@ -136,6 +148,10 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
     @Override
     public void onStop() {
         super.onStop();
+        if (mBroadcastReceiver != null && !FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
+            getContext().unregisterReceiver(mBroadcastReceiver);
+        }
+        mEdgeHandler.removeCallbacksAndMessages(null);
         mLibraryController.unsubscribe(mMediaId);
         mLibraryController.removeListener(this);
         if (!FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
@@ -151,6 +167,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         super.onStart();
         if (!FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
             mLibraryController.addListener(this);
+            getContext().registerReceiver(mBroadcastReceiver, new IntentFilter("com.harman.edge.EDGE"));
         }
     }
 
@@ -179,6 +196,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
     public void onActivityCreated(Bundle bundle) {
         super.onActivityCreated(bundle);
         mLibraryController = ((MediaActivity) getHostActivity()).getLibraryController();
+        mNavigationManager = ((MediaActivity) getHostActivity()).getNavigationManagerImpl();
         if (mFragmentType.equals(FRAGMENT_TYPE_GRID)) {
             setUpGridListView(getView());
         } else {
@@ -234,23 +252,30 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
 
     @Override
     public void onItemClicked(ItemData data) {
-        Bundle extras = data.getExtras();
-        if (extras != null) {
-            if (extras.getInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY) == MediaBrowser.MediaItem.FLAG_BROWSABLE) {
-                getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(
-                        MediaLibraryFragment.FRAGMENT_TYPE_LIST,
-                        extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false),
-                        extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
-                                getContext().getResources().getString(R.string.library_category_play_shuffle)),
-                        data.getPrimaryText(),
-                        data.getSecondaryText(),
-                        data.getId(),
-                        mRootCategoryId,
-                        extras.getBoolean(IS_USB_DEVICE_ROOT, false),
-                        mIsUsbDeviceBrowsing,
-                        mUsbSourceId));
-            } else {
-                mLibraryController.playMediaItem(data);
+        if (mIsEditMode) {
+            mEdgeHandler.removeCallbacksAndMessages(null);
+            sendEditModeAction(MediaConstants.EDGE_ACTION_PLAY_ITEM, mEdgePosition, "com.harman.psa.magic_touch_action_play_item",
+                    "com.harman.psa.magic_touch_action_play_item_image", data, data.getPrimaryText());
+            disableEditMode();
+        } else {
+            Bundle extras = data.getExtras();
+            if (extras != null) {
+                if (extras.getInt(MediaLibraryController.MEDIA_ITEM_TYPE_KEY) == MediaBrowser.MediaItem.FLAG_BROWSABLE) {
+                    getNavigationManager().showFragment(MediaLibraryFragment.newCategoryInstance(
+                            MediaLibraryFragment.FRAGMENT_TYPE_LIST,
+                            extras.getBoolean(MediaLibraryController.PLAY_SHUFFLE_ACTION_KEY, false),
+                            extras.getString(MediaLibraryController.PLAY_SHUFFLE_ACTION_TEXT_KEY,
+                                    getContext().getResources().getString(R.string.library_category_play_shuffle)),
+                            data.getPrimaryText(),
+                            data.getSecondaryText(),
+                            data.getId(),
+                            mRootCategoryId,
+                            extras.getBoolean(IS_USB_DEVICE_ROOT, false),
+                            mIsUsbDeviceBrowsing,
+                            mUsbSourceId));
+                } else {
+                    mLibraryController.playMediaItem(data);
+                }
             }
         }
 
@@ -263,7 +288,14 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
 
     @Override
     public void onGeneralActionClicked(ItemData data) {
-        mLibraryController.fireAction(data, MediaLibraryController.PLAY_SHUFFLE_ACTION_INDEX, mRootCategoryId);
+        if (mIsEditMode) {
+            mEdgeHandler.removeCallbacksAndMessages(null);
+            sendEditModeAction(MediaConstants.EDGE_ACTION_PLAY_ITEM, mEdgePosition, "com.harman.psa.magic_touch_action_shuffle_play_item",
+                    "com.harman.psa.magic_touch_action_play_item_image", data, mHeaderTitle);
+            disableEditMode();
+        } else {
+            mLibraryController.fireAction(data, MediaLibraryController.PLAY_SHUFFLE_ACTION_INDEX, mRootCategoryId);
+        }
     }
 
     @Override
@@ -378,7 +410,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         if (!TextUtils.isEmpty(mUsbSourceId) && mUsbSourceId.equals(usbDevice.getDeviceId())) {
             FragmentManager fm = getFragmentManager();
             int count = fm.getBackStackEntryCount();
-            if(FOLDERS_ID.equals(mRootCategoryId)) {
+            if (FOLDERS_ID.equals(mRootCategoryId)) {
                 int tillRootPage = 1;
                 int tillUsbSourcesPage = 2;
                 int till = FOLDERS_ID.equals(mRootCategoryId) ? tillUsbSourcesPage : tillRootPage;
@@ -447,5 +479,111 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
                 mLibraryController.getFolderContent(mMediaId);
             }
         }
+    }
+
+    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int position = intent.getIntExtra(MediaConstants.EDGE_SHORTCUT_POSITION, MediaConstants.UNDEFINED_EDGE_POSITION);
+            String action = intent.getStringExtra(MediaConstants.EDGE_SHORTCUT_ACTION);
+            String appKey = intent.getStringExtra(MediaConstants.APP_KEY);
+            if (TextUtils.isEmpty(action) || MediaConstants.MAGIC_TOUCH_APP_KEY.equals(appKey)) {
+                showEditMode(position);
+            }
+        }
+    };
+
+    private void showEditMode(final int position) {
+        mEdgeHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                disableEditMode();
+            }
+        }, MediaConstants.EDIT_MODE_TIMEOUT);
+
+        mEdgePosition = position;
+
+        mNavigationManager.setTabBarEnabled(false);
+        ((MediaActivity) getHostActivity()).setEnabledAppBarButtons(false);
+
+        mIsEditMode = true;
+        if (mListAdapter != null) {
+            mListAdapter.setEditModeEnabled(true);
+        }
+        if (mAdapter != null) {
+            mAdapter.setEditModeEnabled(true);
+        }
+
+    }
+
+    private void disableEditMode() {
+        mIsEditMode = false;
+        if (mListAdapter != null) {
+            mListAdapter.setEditModeEnabled(false);
+        }
+        if (mAdapter != null) {
+            mAdapter.setEditModeEnabled(false);
+        }
+        mEdgePosition = MediaConstants.UNDEFINED_EDGE_POSITION;
+
+        mNavigationManager.setTabBarEnabled(true);
+        ((MediaActivity) getHostActivity()).setEnabledAppBarButtons(true);
+
+        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
+    }
+
+    private void sendEditModeAction(String action, int position, String titleMetaName, String iconMetaName, ItemData item, String title) {
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName(MediaConstants.EDGE_SERVICE_PACKAGE, MediaConstants.EDGE_SERVICE_CLASS));
+        Bundle data = new Bundle();
+        Intent playIntent = new Intent();
+        Bundle playIntentExtras = new Bundle();
+        if (position == MediaConstants.UNDEFINED_EDGE_POSITION) {
+            data.putString(MediaConstants.APP_KEY, MediaConstants.MAGIC_TOUCH_APP_KEY);
+            playIntentExtras.putString(MediaConstants.APP_KEY, MediaConstants.MAGIC_TOUCH_APP_KEY);
+        } else {
+            data.putString(MediaConstants.APP_KEY, MediaConstants.EDGE_APP_KEY);
+            data.putInt(MediaConstants.EDGE_SHORTCUT_POSITION, position);
+            playIntentExtras.putString(MediaConstants.APP_KEY, MediaConstants.EDGE_APP_KEY);
+        }
+
+        playIntent.setComponent(new ComponentName("com.android.car.media", "com.android.car.media.MediaActivity"));
+
+        if (MediaConstants.EDGE_ACTION_PLAY_ITEM.equals(action)) {
+            playIntentExtras = new Bundle(item.getExtras());
+            playIntentExtras.putString(MediaConstants.MEDIA_ID_EXTRA_KEY, item.getId());
+            playIntentExtras.putString(MediaConstants.ROOT_CATEGORY_EXTRA_KEY, mRootCategoryId);
+            data.putString(MediaConstants.CONTACT, title);
+
+
+            Bitmap bitmap = Utils.getBitmapIcon(getContext(), item.getAction1DrawableUri());
+            if (bitmap != null) {
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                byte[] byteArray = stream.toByteArray();
+                data.putByteArray(MediaConstants.BLOB_DATA, byteArray);
+            }
+        } else {
+            data.putString(MediaConstants.CONTACT, "");
+        }
+
+        playIntentExtras.putInt(MediaConstants.EDGE_SHORTCUT_POSITION, position);
+        playIntentExtras.putString(MediaConstants.EDGE_SHORTCUT_ACTION, action);
+
+        playIntent.putExtras(playIntentExtras);
+
+        data.putString(MediaConstants.APP_PACKAGE, "com.android.car.media");
+        data.putString(MediaConstants.RES_ACTION_NAME, titleMetaName);
+        data.putString(MediaConstants.RES_ACTION_ON, playIntent.toUri(0));
+        data.putString(MediaConstants.RES_ACTION_OFF, "");
+        data.putString(MediaConstants.RES_ACTION_ICON, "");
+        data.putString(MediaConstants.RES_ICON_ACTION_ON, iconMetaName);
+        data.putString(MediaConstants.RES_ICON_ACTION_OFF, "");
+
+        data.putString(MediaConstants.ACTION_CODE, action);
+        int actionDataType = 0;
+        data.putInt(MediaConstants.DATA_TYPE, actionDataType);
+        intent.putExtras(data);
+        getContext().startService(intent);
     }
 }
