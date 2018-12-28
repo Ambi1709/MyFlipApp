@@ -311,7 +311,13 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     public void onDestroy() {
         super.onDestroy();
         mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
-        mMediaPlaybackModel.removeListener(this);
+        if (mMediaPlaybackModel != null) {
+            if(mMediaPlaybackModel.getMediaBrowser() != null) {
+                mMediaPlaybackModel.getMediaBrowser().unsubscribe("__USB__");
+                mMediaPlaybackModel.getMediaBrowser().unsubscribe("__FOLDERS__");
+            }
+            mMediaPlaybackModel.removeListener(this);
+        }
         mMediaPlaybackModel = null;
         // Calling this with null will clear queue of callbacks and message.
         mHandler.removeCallbacksAndMessages(null);
@@ -1390,12 +1396,18 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
                 mMediaPlaybackModel.getMediaBrowser().subscribe("__USB__", extras, new MediaBrowser.SubscriptionCallback() {
                     @Override
                     public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children, Bundle options) {
-                        MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
-                        if (controls != null && !children.isEmpty()) {
-                            MediaBrowser.MediaItem mediaItem = children.get(0);
-                            controls.playFromMediaId(mediaItem.getMediaId(), mediaItem.getDescription().getExtras());
-                            mMediaPlaybackModel.getMediaBrowser().unsubscribe(parentId);
-                        } else if (controls == null && !children.isEmpty()) {
+                        if(mMediaPlaybackModel != null && mMediaPlaybackModel.isConnected()) {
+                            MediaController.TransportControls controls = mMediaPlaybackModel.getTransportControls();
+                            if (controls != null && !children.isEmpty()) {
+                                MediaBrowser.MediaItem mediaItem = children.get(0);
+                                controls.playFromMediaId(mediaItem.getMediaId(), mediaItem.getDescription().getExtras());
+                                mMediaPlaybackModel.getMediaBrowser().unsubscribe(parentId);
+                            } else if (controls == null && !children.isEmpty()) {
+                                mIsWaitingConnection = true;
+                                mMediaId = children.get(0).getMediaId();
+                                mMediaExtras = children.get(0).getDescription().getExtras();
+                            }
+                        }else if(!children.isEmpty()){
                             mIsWaitingConnection = true;
                             mMediaId = children.get(0).getMediaId();
                             mMediaExtras = children.get(0).getDescription().getExtras();
