@@ -38,8 +38,17 @@ public class MediaWidget2x1 extends PSAIconText2x1Widget {
     private void update(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds,
                         Bundle extras) {
         Intent intent = new Intent(context, MediaActivity.class);
+
+        //original flags were FLAG_ACTIVITY_NEW_TASK and FLAG_ACTIVITY_MULTIPLE_TASK but if use only this flag we will have many instance of Activity
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                Intent.FLAG_ACTIVITY_NEW_TASK |
+                Intent.FLAG_ACTIVITY_MULTIPLE_TASK |
+                Intent.FLAG_ACTIVITY_NO_HISTORY);
+        
         PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent
                 .FLAG_UPDATE_CURRENT);
+
+
         setOnClickIntent(pendingIntent);
 
         if (extras != null) {
