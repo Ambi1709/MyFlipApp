@@ -151,6 +151,9 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         if (mBroadcastReceiver != null && !FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
             getContext().unregisterReceiver(mBroadcastReceiver);
         }
+        if (mDisableEditModeReceiver != null && !FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
+            getContext().unregisterReceiver(mDisableEditModeReceiver);
+        }
         mEdgeHandler.removeCallbacksAndMessages(null);
         mLibraryController.unsubscribe(mMediaId);
         mLibraryController.removeListener(this);
@@ -168,6 +171,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         if (!FRAGMENT_TYPE_USB_SOURCES.equals(mFragmentType)) {
             mLibraryController.addListener(this);
             getContext().registerReceiver(mBroadcastReceiver, new IntentFilter("com.harman.edge.EDGE"));
+            getContext().registerReceiver(mDisableEditModeReceiver, new IntentFilter(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
         }
     }
 
@@ -493,6 +497,13 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         }
     };
 
+    private BroadcastReceiver mDisableEditModeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            disableEditMode();
+        }
+    };
+
     private void showEditMode(final int position) {
         mEdgeHandler.postDelayed(new Runnable() {
             @Override
@@ -528,8 +539,6 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
 
         mNavigationManager.setTabBarEnabled(true);
         ((MediaActivity) getHostActivity()).setEnabledAppBarButtons(true);
-
-        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
     }
 
     private void sendEditModeAction(String action, int position, String titleMetaName, String iconMetaName, ItemData item, String title) {
@@ -585,5 +594,7 @@ public class MediaLibraryFragment extends MediaBaseFragment implements
         data.putInt(MediaConstants.DATA_TYPE, actionDataType);
         intent.putExtras(data);
         getContext().startService(intent);
+
+        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
     }
 }

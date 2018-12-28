@@ -125,6 +125,7 @@ public class MediaPlaylistFragment extends PSABaseFragment
     public void onStart() {
         super.onStart();
         getContext().registerReceiver(mBroadcastReceiver, new IntentFilter("com.harman.edge.EDGE"));
+        getContext().registerReceiver(mDisableEditModeReceiver, new IntentFilter(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
     }
 
     @Override
@@ -137,6 +138,9 @@ public class MediaPlaylistFragment extends PSABaseFragment
         super.onStop();
         if (mBroadcastReceiver != null) {
             getContext().unregisterReceiver(mBroadcastReceiver);
+        }
+        if (mDisableEditModeReceiver != null) {
+            getContext().unregisterReceiver(mDisableEditModeReceiver);
         }
         mEdgeHandler.removeCallbacksAndMessages(null);
     }
@@ -311,6 +315,13 @@ public class MediaPlaylistFragment extends PSABaseFragment
         }
     };
 
+    private BroadcastReceiver mDisableEditModeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            disableEditMode();
+        }
+    };
+
 
     private void showEditMode(final int position) {
         mEdgeHandler.postDelayed(new Runnable() {
@@ -342,8 +353,6 @@ public class MediaPlaylistFragment extends PSABaseFragment
         ((MediaActivity) getHostActivity()).setEnabledAppBarButtons(true);
         mShuffleButton.setEnabled(true);
         mRepeatButton.setEnabled(true);
-
-        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
     }
 
     private void sendEditModeAction(String action, int position, String titleMetaName, String iconMetaName, MediaSession.QueueItem item) {
@@ -400,6 +409,8 @@ public class MediaPlaylistFragment extends PSABaseFragment
         data.putInt(MediaConstants.DATA_TYPE, actionDataType);
         intent.putExtras(data);
         getContext().startService(intent);
+
+        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
     }
 
 

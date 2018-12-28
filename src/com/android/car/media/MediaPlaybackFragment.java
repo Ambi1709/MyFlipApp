@@ -304,6 +304,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     public void onStart() {
         super.onStart();
         getContext().registerReceiver(mBroadcastReceiver, new IntentFilter("com.harman.edge.EDGE"));
+        getContext().registerReceiver(mDisableEditModeReceiver, new IntentFilter(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
     }
 
 
@@ -474,6 +475,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mReturnFromOnStop = true;
         if (mBroadcastReceiver != null) {
             getContext().unregisterReceiver(mBroadcastReceiver);
+        }
+        if (mDisableEditModeReceiver != null) {
+            getContext().unregisterReceiver(mDisableEditModeReceiver);
         }
         mEdgeHandler.removeCallbacksAndMessages(null);
     }
@@ -1502,6 +1506,13 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         }
     };
 
+    private BroadcastReceiver mDisableEditModeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            disableEditMode();
+        }
+    };
+
 
     private void reactEdgeAction(String action, Bundle extras) {
         MediaController.TransportControls transportControls =
@@ -1597,8 +1608,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mRepeatButton.setEnabled(true);
         mPrevButton.setEnabled(true);
         mSeekBar.setEnabled(true);
-
-        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
     }
 
     private void sendEditModeAction(String action, int position, String titleMetaName, String iconMetaName) {
@@ -1655,6 +1664,8 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         data.putInt(MediaConstants.DATA_TYPE, actionDataType);
         intent.putExtras(data);
         getContext().startService(intent);
+
+        getActivity().sendBroadcast(new Intent(MediaConstants.BROADCAST_MAGIC_TOUCH_EDIT_MODE));
     }
 
 }
