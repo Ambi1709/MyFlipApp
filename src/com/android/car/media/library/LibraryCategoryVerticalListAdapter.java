@@ -137,9 +137,6 @@ public class LibraryCategoryVerticalListAdapter extends RecyclerView.Adapter<Rec
         Bundle itemExtras = itemData.getExtras();
         if (itemExtras != null) {
             mDropdownDialog = new DropdownDialog(context, DropdownDialog.VERTICAL);
-            mDropdownDialog.setColor(ResourcesCompat.getColor(context.getResources(),
-                    R.color.psa_general_background_color2, context.getTheme()));
-            mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
 
             if (itemExtras.getBoolean(MediaLibraryController.PLAY_ITEM_ACTION_KEY, false) == true) {
                 String playItemText = itemExtras.getString(MediaLibraryController.PLAY_ITEM_ACTION_TEXT_KEY,

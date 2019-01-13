@@ -422,12 +422,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mNextButton = parentView.findViewById(R.id.next);
         mPlayPauseStopButton = parentView.findViewById(R.id.play_pause);
 
-        TypedValue typedValue = new TypedValue();
-        getActivity().getTheme().resolveAttribute(R.attr.psa_general_major_color1, typedValue, true);
-        final int colorAccent = typedValue.data;
+        final int colorAccent = getContext().getResources().getColor(R.color.psa_general_major_color1, getContext().getTheme());
 
-        getActivity().getTheme().resolveAttribute(R.attr.psa_general_content_color1, typedValue, true);
-        final int colorContent = typedValue.data;
+        final int colorContent = getContext().getResources().getColor(R.color.psa_general_content_color1, getContext().getTheme());
 
         mRepeatButton = parentView.findViewById(R.id.repeat);
         mShuffleButton = parentView.findViewById(R.id.shuffle);
@@ -729,6 +726,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
         mHandler.removeCallbacks(mResetTitleRunnable);
         darkenScrim();
+        mAlbumArtView.setVisibility(View.GONE);
         mTitleView.setText(message);
         mArtistView.setVisibility(View.GONE);
         mShowingMessage = true;
@@ -843,6 +841,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mTapToSelectText.setText(msg);
         mInitialNoContentView.setVisibility(View.VISIBLE);
         mMetadata.setVisibility(View.GONE);
+        mAlbumArtView.setVisibility(View.GONE);
         mMusicPanel.setVisibility(View.GONE);
         mCustomActionsPanel.setVisibility(View.GONE);
         mProgressPanel.setVisibility(View.GONE);
@@ -863,6 +862,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mTapToSelectText.setVisibility(View.GONE);
         mInitialNoContentView.setVisibility(View.GONE);
         mMetadata.setVisibility(View.VISIBLE);
+        mAlbumArtView.setVisibility(View.VISIBLE);
         mMusicPanel.setVisibility(View.VISIBLE);
         mCustomActionsPanel.setVisibility(View.VISIBLE);
         mProgressPanel.setVisibility(View.VISIBLE);
@@ -906,6 +906,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         }
         setScrimVisible(true);
         mArtistView.setVisibility(View.VISIBLE);
+        mAlbumArtView.setVisibility(View.VISIBLE);
         if (mCurrentTrackMetadata != null) {
             mTitleView.setText(mCurrentTrackMetadata.getString(MediaMetadata.METADATA_KEY_TITLE));
             mArtistView.setText(mCurrentTrackMetadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
@@ -1115,13 +1116,10 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         @Override
         public void onChanged(int position) {
             mShuffleState = position;
-            TypedValue typedValue = new TypedValue();
-            getActivity().getTheme().resolveAttribute(R.attr.psa_general_major_color1, typedValue, true);
-            final int colorAccent = typedValue.data;
 
-            getActivity().getTheme().resolveAttribute(R.attr.psa_general_content_color1, typedValue, true);
-            final int colorContent = typedValue.data;
+            final int colorAccent = getContext().getResources().getColor(R.color.psa_general_major_color1, getContext().getTheme());
 
+            final int colorContent = getContext().getResources().getColor(R.color.psa_general_content_color1, getContext().getTheme());
 
             switch (position) {
                 case 0:
@@ -1139,12 +1137,10 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         @Override
         public void onChanged(int position) {
             mRepeatState = position;
-            TypedValue typedValue = new TypedValue();
-            getActivity().getTheme().resolveAttribute(R.attr.psa_general_major_color1, typedValue, true);
-            final int colorAccent = typedValue.data;
 
-            getActivity().getTheme().resolveAttribute(R.attr.psa_general_content_color1, typedValue, true);
-            final int colorContent = typedValue.data;
+            final int colorAccent = getContext().getResources().getColor(R.color.psa_general_major_color1, getContext().getTheme());
+
+            final int colorContent = getContext().getResources().getColor(R.color.psa_general_content_color1, getContext().getTheme());
             switch (position) {
                 case 0:
                     mRepeatButton.setColorFilter(colorContent, PorterDuff.Mode.SRC_ATOP);
@@ -1305,14 +1301,8 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     }
 
     private void showSourcesDialog(View view) {
-        DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
-                mContext.getTheme()));
-        DropdownDialog.setDefaultTextColor(Color.BLACK);
         // TODO refresh sources list
         mDropdownDialog = new DropdownDialog(mContext, DropdownDialog.VERTICAL);
-        mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
-                mContext.getTheme()));
-        mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
         mSourceIconMap.entrySet().forEach(
                 e -> mDropdownDialog.addDropdownItem(
                         new DropdownItem(e.getKey(), e.getKey() + " source", e.getValue())
@@ -1596,7 +1586,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mPlayPauseStopButton.setImageState(new int[]{android.R.attr.state_empty}, true);
 
         mScrimView.setAlpha(mDefaultScrimAlpha);
-        mScrimView.setBackgroundColor(Color.BLACK);
+        mScrimView.setBackgroundColor(getContext().getResources().getColor(R.color.art_scrim, getContext().getTheme()));
 
         mPlayPauseStopButton.setOnTouchListener(null);
         mNextButton.setOnTouchListener(null);

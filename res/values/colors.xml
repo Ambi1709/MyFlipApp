@@ -19,4 +19,6 @@
     <color name="music_loading_view_background">#11181d</color>
     <color name="no_content_text_color">#ffffff</color>
     <color name="album_art_color_overlay">#99000000</color>
+
+    <color name="art_scrim">#FFFFFF</color>
 </resources>

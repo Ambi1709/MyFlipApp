@@ -208,13 +208,9 @@ public class MediaPlaylistFragment extends PSABaseFragment
         @Override
         public void onChanged(int position) {
             mShuffleState = position;
-            TypedValue typedValue = new TypedValue();
-            getActivity().getTheme().resolveAttribute(R.attr.psa_general_major_color1, typedValue, true);
-            final int colorAccent = typedValue.data;
 
-            getActivity().getTheme().resolveAttribute(R.attr.psa_general_content_color1, typedValue, true);
-            final int colorContent = typedValue.data;
-
+            final int colorAccent = getContext().getResources().getColor(R.color.psa_general_major_color1, getContext().getTheme());
+            final int colorContent = getContext().getResources().getColor(R.color.psa_general_content_color1, getContext().getTheme());
 
             switch (position) {
                 case 0:
@@ -232,12 +228,9 @@ public class MediaPlaylistFragment extends PSABaseFragment
         @Override
         public void onChanged(int position) {
             mRepeatState = position;
-            TypedValue typedValue = new TypedValue();
-            getActivity().getTheme().resolveAttribute(R.attr.psa_general_major_color1, typedValue, true);
-            final int colorAccent = typedValue.data;
 
-            getActivity().getTheme().resolveAttribute(R.attr.psa_general_content_color1, typedValue, true);
-            final int colorContent = typedValue.data;
+            final int colorAccent = getContext().getResources().getColor(R.color.psa_general_major_color1, getContext().getTheme());
+            final int colorContent = getContext().getResources().getColor(R.color.psa_general_content_color1, getContext().getTheme());
             switch (position) {
                 case 0:
                     mRepeatButton.setColorFilter(colorContent, PorterDuff.Mode.SRC_ATOP);

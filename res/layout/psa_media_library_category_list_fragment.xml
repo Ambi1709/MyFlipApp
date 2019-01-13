@@ -7,7 +7,7 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="128px"
-        android:background="?attr/psa_general_background_color2">
+        android:background="@color/psa_general_background_color2">
 
         <ImageButton
             android:id="@+id/back_button"
@@ -15,7 +15,8 @@
             android:layout_height="128px"
             android:layout_alignParentStart="true"
             android:background="@color/psa_transparent_color"
-            android:src="@drawable/psa_general_back_image" />
+            android:src="@drawable/psa_general_back_image"
+            android:tint="@color/psa_general_content_color1" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -30,7 +31,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="start"
-                android:textColor="?attr/psa_general_major_color1" />
+                android:textColor="@color/psa_general_major_color1" />
 
             <TextView
                 android:id="@+id/category_subtitle"
@@ -38,7 +39,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="start"
-                android:textColor="?attr/psa_general_content_color2"
+                android:textColor="@color/psa_general_content_color2"
                 android:visibility="gone" />
         </LinearLayout>
     </RelativeLayout>

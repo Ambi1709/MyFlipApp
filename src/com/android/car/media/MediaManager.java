@@ -468,14 +468,13 @@ public class MediaManager {
             Resources.Theme theme = packageContext.getTheme();
             ta = theme.obtainStyledAttributes(new int[]{
                     android.R.attr.colorPrimary,
-                    R.attr.psa_general_major_color1,
                     android.R.attr.colorPrimaryDark
             });
             int defaultColor =
                     mContext.getResources().getColor(android.R.color.background_dark);
             mPrimaryColor = ta.getColor(0, defaultColor);
-            mAccentColor = ta.getColor(1, defaultColor);
-            mPrimaryColorDark = ta.getColor(2, defaultColor);
+            mAccentColor = mContext.getResources().getColor(R.color.psa_general_major_color1);
+            mPrimaryColorDark = ta.getColor(1, defaultColor);
         } catch (PackageManager.NameNotFoundException e) {
             Log.e(TAG, "Unable to update media client package attributes.", e);
         } finally {

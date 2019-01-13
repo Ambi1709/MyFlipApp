@@ -6,6 +6,6 @@
     android:contentDescription="@null"
     android:scaleType="center"
     android:src="@drawable/psa_back_arrow"
-    android:background="?attr/psa_general_major_color1">
+    android:background="@color/psa_general_major_color1">
 
 </ImageView>

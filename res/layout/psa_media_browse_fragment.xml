@@ -27,7 +27,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="start"
             android:text="@string/library_recently_played_title"
-            android:textColor="?attr/psa_general_major_color1"
+            android:textColor="@color/psa_general_major_color1"
             android:visibility="gone" />
 
         <com.harman.psa.widget.verticallist.PsaRecyclerView

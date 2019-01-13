@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:animateLayoutChanges="true"
-    android:background="?attr/psa_general_background_color1">
+    android:background="@color/psa_general_background_color1">
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -42,7 +42,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:alpha="@dimen/media_scrim_alpha"
-                    android:background="@android:color/black" />
+                    android:background="@color/art_scrim" />
 
             </RelativeLayout>
 
@@ -68,7 +68,7 @@
                     android:gravity="center"
                     android:maxLines="1"
                     android:text="@string/profile_name_text"
-                    android:textColor="?attr/psa_general_content_color2" />
+                    android:textColor="@color/psa_general_content_color2" />
             </LinearLayout>
         </RelativeLayout>
 
@@ -105,7 +105,7 @@
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="2"
-                    android:textColor="?attr/psa_general_major_color1" />
+                    android:textColor="@color/psa_general_major_color1" />
 
                 <TextView
                     android:id="@+id/artist"
@@ -115,7 +115,7 @@
                     android:layout_marginTop="@dimen/metadata_inter_line_space"
                     android:ellipsize="end"
                     android:maxLines="2"
-                    android:textColor="?attr/psa_general_content_color1" />
+                    android:textColor="@color/psa_general_content_color1" />
 
             </LinearLayout>
 
@@ -154,14 +154,14 @@
                 android:layout_alignParentEnd="false"
                 android:layout_alignParentStart="true"
                 android:layout_toLeftOf="@+id/custom_actions_container"
-                android:background="?attr/psa_general_background_color2"
+                android:background="@color/psa_general_background_color2"
                 android:orientation="horizontal">
 
                 <LinearLayout
                     android:id="@+id/controls"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="?attr/psa_general_background_color1"
+                    android:background="@color/psa_general_background_color1"
                     android:orientation="horizontal">
 
                     <ImageView
@@ -217,7 +217,7 @@
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
                 android:gravity="start"
-                android:textColor="?attr/psa_general_content_color2" />
+                android:textColor="@color/psa_general_content_color2" />
 
             <TextView
                 android:id="@+id/duration"
@@ -227,7 +227,7 @@
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:gravity="start"
-                android:textColor="?attr/psa_general_content_color2" />
+                android:textColor="@color/psa_general_content_color2" />
 
             <com.harman.psa.widget.slider.PSASlider
                 android:id="@+id/seek_bar"

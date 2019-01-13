@@ -36,7 +36,7 @@
         android:persistent="true"
         android:resizeableActivity="true"
         android:supportsPictureInPicture="true"
-        android:theme="@style/PSAAppNightTheme">
+        android:theme="@style/AppTheme">
 
         <meta-data
             android:name="android.car.application"
@@ -50,7 +50,7 @@
             android:label="CarMediaApp"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:theme="@style/PSAAppNightTheme">
+            android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

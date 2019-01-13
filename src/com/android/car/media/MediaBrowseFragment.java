@@ -208,9 +208,6 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
     }
 
     private void showVolumesDialog(List<UsbDevice> usbDevices) {
-        DropdownDialog.setDefaultColor(ResourcesCompat.getColor(getResources(), R.color.psa_dropdown_shadow_color,
-                getActivity().getTheme()));
-        DropdownDialog.setDefaultTextColor(Color.BLACK);
         if (mDropdownDialog == null) {
             mDropdownDialog = new DropdownDialog(mContext, DropdownDialog.HORIZONTAL, DropdownHelper.ItemType.ICON);
         } else {
@@ -218,9 +215,6 @@ public class MediaBrowseFragment extends MediaBaseFragment implements
                 mDropdownDialog.removeDropdownItem(dropdownItem);
             }
         }
-        mDropdownDialog.setColor(ResourcesCompat.getColor(getResources(), R.color.psa_general_background_color3,
-                getActivity().getTheme()));
-        mDropdownDialog.setTextColorRes(R.color.psa_dropdown_thumb_color);
         mDropdownItems.clear();
         for (int i = 0; i < usbDevices.size(); i++) {
             UsbDevice usbDevice = usbDevices.get(i);

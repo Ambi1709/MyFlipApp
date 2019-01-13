@@ -46,7 +46,7 @@
 
         <TextView
             android:id="@+id/tap_to_select_item"
-            style="@style/TextAppearance.NoContent"
+            style="@style/PsaTextContentSecondary1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
@@ -54,6 +54,7 @@
             android:gravity="center"
             android:maxLines="3"
             android:text="@string/nothing_to_play"
+            android:textColor="@color/psa_general_content_color1"
             android:visibility="gone" />
     </RelativeLayout>
 </com.android.car.view.MaxWidthLayout>
