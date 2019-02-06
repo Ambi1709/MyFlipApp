@@ -1,9 +1,14 @@
 package com.android.car.media;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.MediaMetadata;
 import android.media.session.MediaController;
@@ -11,14 +16,19 @@ import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.android.car.PSACarMediaApp;
+import com.android.car.eventbus.EventBus;
 import com.android.car.media.widget.MediaWidget1x1;
 import com.android.car.media.widget.SubFragment;
 import com.android.car.usb.PSAUsbStateService;
@@ -27,6 +37,7 @@ import com.harman.psa.widget.PSABaseActivity;
 import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
 import com.harman.psa.widget.toast.PSAToast;
+
 
 import java.util.List;
 
@@ -52,7 +63,7 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
 
     private MediaPlaybackModel mMediaPlaybackModel;
 
-    private MediaLibraryController mLibraryController;
+    private com.android.car.media.MediaLibraryController mLibraryController;
 
     private SharedPreferences mSharedPrefs;
 
@@ -64,7 +75,38 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
     private PSAAppBarButton mAppSwitchButton;
     private View mRadioSwitchButton;
     private View mMediaSwitchButton;
-    private Bundle mWidgetExtra;
+
+    private void applySize(int leftMargin, int newWidth, int duration) {
+        final FrameLayout.LayoutParams prms = (FrameLayout.LayoutParams) mDrawerLayout.getLayoutParams();
+        int start = prms.width;
+        int end = newWidth;
+        if(newWidth < prms.width) {
+            start = prms.width;
+            end = newWidth;
+        }
+
+        ValueAnimator anim = ValueAnimator.ofInt(start, end);
+        anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                int w = (int) animation.getAnimatedValue();
+                prms.width = w;
+                float a = (w - 1280) / 640f;
+                prms.leftMargin = (int) (leftMargin - leftMargin * a);
+                mDrawerLayout.setLayoutParams(prms);
+            }
+        });
+        anim.setDuration(duration);
+        anim.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                prms.leftMargin = 0;
+                mDrawerLayout.setLayoutParams(prms);
+            }
+        });
+        anim.start();
+    }
 
     private final MediaManager.Listener mListener = new MediaManager.Listener() {
         @Override
@@ -112,10 +154,16 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         super.onDestroy();
     }
 
+    public final void onBusEvent(MessageEvent event) {
+        applySize(event.getLeftMargin(), event.getDestinationWidth(), event.getDuration());
+
+    }
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        EventBus.getDefault().register(this);
         if (mMediaPlaybackModel == null) {
             mMediaPlaybackModel = new MediaPlaybackModel(MediaActivity.this, null /* browserExtras */);
         }
@@ -224,7 +272,9 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
 
         mMediaPlaybackModel.start();
         mMediaPlaybackModel.addListener(this);
-
+        FrameLayout.LayoutParams prms = (FrameLayout.LayoutParams) mDrawerLayout.getLayoutParams();
+        prms.width = getResources().getDisplayMetrics().widthPixels;
+        mDrawerLayout.setLayoutParams(prms);
     }
 
     @Override

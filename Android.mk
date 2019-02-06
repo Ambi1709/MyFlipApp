@@ -18,7 +18,7 @@ ifneq ($(TARGET_BUILD_PDK), true)
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := $(call all-java-files-under, src)
+LOCAL_SRC_FILES := $(call all-java-files-under, src) $(call all-Iaidl-files-under, src)
 
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
 
@@ -41,6 +41,7 @@ LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
 ifeq (,$(findstring android-support-v7-appcompat,$(LOCAL_STATIC_JAVA_LIBRARIES)))
 LOCAL_RESOURCE_DIR += frameworks/support/v7/appcompat/res
 LOCAL_RESOURCE_DIR += frameworks/support/design/res
+
 LOCAL_AAPT_FLAGS += --extra-packages android.support.v7.appcompat
 LOCAL_AAPT_FLAGS += --extra-packages android.support.design
 LOCAL_STATIC_JAVA_LIBRARIES += android-support-v7-appcompat
@@ -57,5 +58,7 @@ include packages/services/Car/car-support-lib/car-support.mk
 include vendor/harman/packages/apps/libs/car-widget-psa/widget/src/main/car-psa-widget-lib.mk
 include $(BUILD_PACKAGE)
 
+include $(CLEAR_VARS)
+include $(BUILD_MULTI_PREBUILT)
 endif
 
