@@ -238,9 +238,9 @@
                 android:layout_toRightOf="@+id/current_time"
                 android:paddingEnd="@dimen/psa_slider_thumb_with_border_size"
                 android:paddingStart="@dimen/psa_slider_thumb_with_border_size"
-                android:progressDrawable="@drawable/psa_slider_progress"
+                android:progressDrawable="@drawable/psa_slider_progress_default"
                 android:splitTrack="false"
-                android:thumb="@drawable/psa_slider_thumb"
+                android:thumb="@drawable/psa_slider_thumb_default"
                 app:show_value_indicator="false" />
 
 
