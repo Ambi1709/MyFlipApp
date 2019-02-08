@@ -1117,9 +1117,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         public void onChanged(int position) {
             mShuffleState = position;
 
-            final int colorAccent = getContext().getResources().getColor(R.color.psa_general_major_color1, getContext().getTheme());
+            final int colorAccent = getContext().getResources().getColor(R.color.psa_media_shuffle_button_active_color, getContext().getTheme());
 
-            final int colorContent = getContext().getResources().getColor(R.color.psa_general_content_color1, getContext().getTheme());
+            final int colorContent = getContext().getResources().getColor(R.color.psa_media_shuffle_button_inactive_color, getContext().getTheme());
 
             switch (position) {
                 case 0:
@@ -1138,9 +1138,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         public void onChanged(int position) {
             mRepeatState = position;
 
-            final int colorAccent = getContext().getResources().getColor(R.color.psa_general_major_color1, getContext().getTheme());
+            final int colorAccent = getContext().getResources().getColor(R.color.psa_media_repeat_button_active_color, getContext().getTheme());
 
-            final int colorContent = getContext().getResources().getColor(R.color.psa_general_content_color1, getContext().getTheme());
+            final int colorContent = getContext().getResources().getColor(R.color.psa_media_repeat_button_inactive_color, getContext().getTheme());
             switch (position) {
                 case 0:
                     mRepeatButton.setColorFilter(colorContent, PorterDuff.Mode.SRC_ATOP);

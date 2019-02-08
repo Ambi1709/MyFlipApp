@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="psa_media_shuffle_button_active_color">@color/psa_general_major_color1</color>
+    <color name="psa_media_shuffle_button_inactive_color">@color/psa_general_content_color1</color>
+
+    <color name="psa_media_repeat_button_inactive_color">@color/psa_general_content_color1</color>
+    <color name="psa_media_repeat_button_active_color">@color/psa_general_major_color1</color>
+</resources>
