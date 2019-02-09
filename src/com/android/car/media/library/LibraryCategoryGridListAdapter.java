@@ -84,7 +84,7 @@ public class LibraryCategoryGridListAdapter extends RecyclerView.Adapter<Library
             if (isInEditMode) {
                 mView.setBackgroundResource(R.drawable.psa_general_generic_state_container_focus);
             } else {
-                mView.setBackground(null);
+                mView.setBackgroundResource(R.drawable.psa_general_generic_state_container);
             }
         }
     }

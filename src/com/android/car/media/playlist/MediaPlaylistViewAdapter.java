@@ -1,6 +1,7 @@
 package com.android.car.media;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.media.MediaDescription;
 import android.media.session.MediaSession;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.view.ViewGroup;
 
 import com.harman.psa.widget.verticallist.holder.SimpleActionViewHolder;
 import com.harman.psa.widget.verticallist.model.ItemData;
+import com.harman.psa.widget.verticallist.items.BaseItemView;
 
 import java.util.List;
 
@@ -100,8 +102,12 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         if (mIsEditMode) {
             viewHolder.itemView.setBackgroundResource(R.drawable.psa_general_generic_state_container_focus);
+            ((BaseItemView)(viewHolder.itemView)).getPrimaryTextView().setTextColor(viewHolder.itemView.getContext().getResources().getColor(R.color.psa_default_grid_list_item_state_text_color_focused));
+            ((BaseItemView)(viewHolder.itemView)).getSecondaryTextView().setTextColor(viewHolder.itemView.getContext().getResources().getColor(R.color.psa_default_grid_list_item_state_text_color_focused));
         } else {
-            viewHolder.itemView.setBackground(null);
+            viewHolder.itemView.setBackgroundResource(R.drawable.psa_general_generic_state_container);
+            ((BaseItemView)(viewHolder.itemView)).getPrimaryTextView().setTextColor(viewHolder.itemView.getContext().getResources().getColorStateList(R.color.psa_default_grid_list_item_state_text_color));
+            ((BaseItemView)(viewHolder.itemView)).getSecondaryTextView().setTextColor(viewHolder.itemView.getContext().getResources().getColorStateList(R.color.psa_default_grid_list_item_state_text_color));
         }
     }
 
