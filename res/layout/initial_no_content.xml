@@ -14,13 +14,13 @@
   limitations under the License.
 -->
 
-<com.android.car.view.MaxWidthLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:animateLayoutChanges="true"
-    app:carMaxWidth="@dimen/apps_max_content_width">
-
+   >
+    <!--app:carMaxWidth="@dimen/apps_max_content_width"-->
     <RelativeLayout
         android:id="@+id/initial_view"
         android:layout_width="match_parent"
@@ -30,12 +30,13 @@
         <ProgressBar
             android:id="@+id/loading_spinner"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/car_list_item_height"
+            android:layout_height="match_parent"
+
             android:layout_alignWithParentIfMissing="true"
             android:layout_centerInParent="true"
             android:indeterminateDrawable="@drawable/music_buffering"
             android:visibility="gone" />
-
+        <!--android:layout_height="@dimen/car_list_item_height"-->
         <ImageView
             android:id="@+id/error_icon"
             android:layout_width="@dimen/missing_permission_icon_size"
@@ -57,4 +58,4 @@
             android:textColor="@color/psa_general_content_color1"
             android:visibility="gone" />
     </RelativeLayout>
-</com.android.car.view.MaxWidthLayout>
+</FrameLayout>

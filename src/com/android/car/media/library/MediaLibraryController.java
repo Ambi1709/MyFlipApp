@@ -5,8 +5,8 @@ import android.media.browse.MediaBrowser;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Bundle;
-import android.support.annotation.MainThread;
-import android.support.annotation.Nullable;
+import androidx.annotation.MainThread;
+import androidx.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
 

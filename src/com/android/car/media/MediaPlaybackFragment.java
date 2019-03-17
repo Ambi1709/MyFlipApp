@@ -25,11 +25,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.UserManager;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.content.res.ResourcesCompat;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.content.res.ResourcesCompat;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -49,7 +49,7 @@ import android.widget.Toast;
 
 import com.android.car.apps.common.BitmapDownloader;
 import com.android.car.apps.common.BitmapWorkerOptions;
-import com.android.car.apps.common.ColorChecker;
+import com.android.car.media.common.ColorChecker;
 import com.android.car.apps.common.util.Assert;
 import com.android.car.media.util.widgets.PlayPauseStopImageView;
 import com.android.car.usb.PSAUsbStateService;
@@ -831,7 +831,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         mAppConnectingSpinner.setVisibility(View.GONE);
         setScrimVisible(false);
         if (isError) {
-            setBackgroundColor(getContext().getColor(R.color.car_error_screen));
+            setBackgroundColor(getContext().getColor(R.color.car_dark_blue_grey_800)); //car_error_screen
             mMusicErrorIcon.setVisibility(View.VISIBLE);
         } else {
             setBackgroundColor(getContext().getColor(R.color.car_dark_blue_grey_800));
@@ -1312,9 +1312,9 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         //Set listener for action item clicked
         mDropdownDialog.setOnActionItemClickListener(this);
 
-        mDropdownDialog.setOnDismissListener(() -> {
-            mDropdownDialog = null;
-        });
+//        mDropdownDialog.setOnDismissListener(() -> {
+//            mDropdownDialog = null;
+//        });
         mDropdownDialog.show(view, DropdownHelper.Side.LEFT);
     }
 
