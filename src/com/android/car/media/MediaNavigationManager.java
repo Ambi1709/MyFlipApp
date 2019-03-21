@@ -1,10 +1,14 @@
 package com.android.car.media;
 
 import android.content.Context;
+
 import androidx.fragment.app.FragmentManager;
+
 import android.util.Log;
 
 import com.android.car.media.R;
+import com.android.car.media.widget.WidgetMediaPlayerFragment;
+import com.android.car.media.widget.WidgetRadioFragment;
 import com.android.car.radio.MainRadioFragment;
 import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
@@ -19,6 +23,7 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
     private int mActiveTab = MediaTab.PLAYER.ordinal();
     private PSATabBarManager mTabBarManager;
     private boolean mIsReadyToInteract;
+    private boolean mShowWidgetView = false;
 
     private static enum MediaTab {
         PLAYER,
@@ -40,19 +45,34 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
         super(context, fragmentManager, contentContainer);
     }
 
+    public void lockWidgetView() {
+        mIsReadyToInteract = false;
+        mShowWidgetView = true;
+    }
+
     public void setActiveApp(int activeApp) {
         mActiveApp = activeApp;
         refreshTabLabels();
     }
 
     public void showActiveApp(int activeTab, boolean dontUpdateFragment) {
-        mIsReadyToInteract = true;
-        mTabBarManager.setSelectedTab(activeTab);
-        if (!dontUpdateFragment) {
-            onTabChanged(null, activeTab);
+        if (mShowWidgetView && !dontUpdateFragment) {
+            clearBackStack();
+            if (mActiveApp == MediaConstants.RADIO_APP) {
+                showFragment(new WidgetRadioFragment());
+            } else {
+                showFragment(new WidgetMediaPlayerFragment());
+            }
         } else {
-            mActiveTab = activeTab;
+            mIsReadyToInteract = true;
+            mTabBarManager.setSelectedTab(activeTab);
+            if (!dontUpdateFragment) {
+                onTabChanged(null, activeTab);
+            } else {
+                mActiveTab = activeTab;
+            }
         }
+
     }
 
     public void showActiveApp() {
@@ -149,6 +169,9 @@ public class MediaNavigationManager extends PSABaseNavigationManager implements 
     }
 
     public void openPlayerTab(String sourceId) {
+        if (mShowWidgetView) {
+            return;
+        }
         mActiveApp = MediaConstants.MEDIA_APP;
         refreshTabLabels();
         showFragment(MediaPlaybackFragment.newInstance(sourceId));

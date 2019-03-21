@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:animateLayoutChanges="true"
+    android:background="@color/psa_general_background_color1">
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/psa_general_background_color1"
+        android:orientation="vertical">
+
+        <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/widgetRootView"
+            android:layout_width="match_parent"
+            android:layout_height="512px">
+
+<!--            <com.android.car.media.widget.ui.CoverFlowPager
+                android:id="@+id/coverFlow"
+                android:layout_width="@dimen/media_widget_cover_flow_size"
+                android:layout_height="@dimen/media_widget_cover_flow_size"
+                android:layout_alignParentTop="true"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="@dimen/media_widget_cover_flow_top_margin" />-->
+            <ImageView
+                android:id="@+id/albumArtWidget"
+                android:layout_width="320px"
+                android:layout_height="320px"
+                android:layout_marginTop="50px"
+                android:layout_alignParentTop="true"
+                android:layout_centerHorizontal="true"/>
+
+            <com.android.car.media.common.MediaAppSelectorWidget
+                android:id="@+id/app_switch_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentLeft="true"
+                android:background="@color/psa_general_background_color3"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="@dimen/app_switch_widget_icon_padding"
+                app:fullScreenDialog="false" />
+
+            <TextView
+                android:id="@+id/title"
+                style="@style/PsaTextContentPrimary1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_above="@+id/subTitle"
+                android:layout_centerInParent="true"
+                android:maxLines="1"/>
+
+            <TextView
+                android:id="@+id/subTitle"
+                style="@style/PsaTextContentSecondary1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:layout_centerInParent="true"
+                android:gravity="center"
+                android:maxLines="1" />
+
+        </RelativeLayout>
+
+
+        <LinearLayout
+            android:id="@+id/buttonPanel"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/psa_widget_layout_button_height"
+            android:orientation="horizontal">
+
+            <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/switch_to_radio_button"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:tint="@color/psa_general_content_color1"
+                android:src="@drawable/psa_switch_to_radio_button_icon"/>
+
+            <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/play_pause_button"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:tint="@color/psa_general_content_color1"
+                android:src="@drawable/psa_media_button_icon_play"/>
+
+            <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/next_button"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:tint="@color/psa_general_content_color1"
+                android:src="@drawable/psa_media_button_icon_next"/>
+
+        </LinearLayout>
+    </LinearLayout>
+
+</FrameLayout>

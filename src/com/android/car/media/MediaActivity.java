@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
+import android.car.Car;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -29,6 +30,8 @@ import android.widget.Toast;
 
 import com.android.car.PSACarMediaApp;
 import com.android.car.eventbus.EventBus;
+import com.android.car.media.common.source.MediaSource;
+import com.android.car.media.common.source.MediaSourceViewModel;
 import com.android.car.media.widget.MediaWidget1x1;
 import com.android.car.media.widget.SubFragment;
 import com.android.car.usb.PSAUsbStateService;
@@ -61,6 +64,8 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
 
     private static int mActiveApp;
 
+    private MediaSource mCurrentMediaSource;
+
     private MediaPlaybackModel mMediaPlaybackModel;
 
     private com.android.car.media.MediaLibraryController mLibraryController;
@@ -68,6 +73,8 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
     private SharedPreferences mSharedPrefs;
 
     private MediaNavigationManager mNavigationManager;
+
+    private boolean mIsOpenedAsWidget = false;
 
     /* App bar buttons */
     private PSAAppBarButton mBurgerMenuButton;
@@ -155,8 +162,9 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
     }
 
     public final void onBusEvent(MessageEvent event) {
-        applySize(event.getLeftMargin(), event.getDestinationWidth(), event.getDuration());
-
+        if (!mIsOpenedAsWidget) {
+            applySize(event.getLeftMargin(), event.getDestinationWidth(), event.getDuration());
+        }
     }
 
     @Override
@@ -230,51 +238,125 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
             }
         });
 
-        int lastActiveTab = TAB_NOT_SELECTED_INDEX;
-        if (savedInstanceState != null) {
-            boolean isVisible = savedInstanceState.getBoolean(TAB_VISIBLE_STATE);
-            if (isVisible) {
-                getTabBarManager().showTabBar();
-                getAppBarView().replaceAppBarButton(mBurgerMenuButton);
-            } else {
-                getTabBarManager().hideTabBar();
+        Intent curIntent = getIntent();
+        if(curIntent != null){
+            Bundle extras = null;
+            extras = curIntent.getExtras();
+            if (extras != null) {
+                mIsOpenedAsWidget = extras.getBoolean("OPEN_AS_WIDGET", false);
             }
-            mActiveApp = savedInstanceState.getInt(LAST_ACTIVE_APP);
-            lastActiveTab = savedInstanceState.getInt(SELECTED_TAB_STATE, TAB_NOT_SELECTED_INDEX);
         }
 
         mNavigationManager = new MediaNavigationManager(this, getSupportFragmentManager(),
                 getMainContentContainerId());
-        mNavigationManager.setActiveApp(mActiveApp);
 
-        getTabBarManager().addOnTabChangeListener(mNavigationManager);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().hide();
-        }
+        if (mIsOpenedAsWidget){
+       // if (true){
 
-        if (getTabBarManager().isTabBarVisible()) {
-            getAppBarView().removeAppBarButton(mBurgerMenuButton.getPosition());
-        }
-        /* Hide right bar since we don't need one for media app*/
-        getAppBarView().hideRightBar();
+            getTabBarManager().hideTabBar();
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().hide();
+            }
+            getAppBarView().hideRightBar();
+            getAppBarView().hideLeftBar();
 
-        mNavigationManager.setActiveApp(mActiveApp);
+            if (savedInstanceState != null) {
+                mActiveApp = savedInstanceState.getInt(LAST_ACTIVE_APP);
+            }
+            mNavigationManager.setActiveApp(mActiveApp);
 
-        setAppBarButtonsForActiveApp();
+            mNavigationManager.lockWidgetView();
 
-        PSATabBarManager tabManager = getTabBarManager();
-        mNavigationManager.formMediaTabBar(tabManager, this);
-        if (lastActiveTab == TAB_NOT_SELECTED_INDEX) {
             mNavigationManager.showActiveApp();
-        } else {
-            mNavigationManager.showActiveApp(lastActiveTab, true);
+
+        } else{
+            int lastActiveTab = TAB_NOT_SELECTED_INDEX;
+            if (savedInstanceState != null) {
+                boolean isVisible = savedInstanceState.getBoolean(TAB_VISIBLE_STATE);
+                if (isVisible) {
+                    getTabBarManager().showTabBar();
+                    getAppBarView().replaceAppBarButton(mBurgerMenuButton);
+                } else {
+                    getTabBarManager().hideTabBar();
+                }
+                mActiveApp = savedInstanceState.getInt(LAST_ACTIVE_APP);
+                lastActiveTab = savedInstanceState.getInt(SELECTED_TAB_STATE, TAB_NOT_SELECTED_INDEX);
+            }
+
+            getTabBarManager().addOnTabChangeListener(mNavigationManager);
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().hide();
+            }
+
+            if (getTabBarManager().isTabBarVisible()) {
+                getAppBarView().removeAppBarButton(mBurgerMenuButton.getPosition());
+            }
+
+            /* Hide right bar since we don't need one for media app*/
+            getAppBarView().hideRightBar();
+
+            mNavigationManager.setActiveApp(mActiveApp);
+
+            setAppBarButtonsForActiveApp();
+
+            PSATabBarManager tabManager = getTabBarManager();
+            mNavigationManager.formMediaTabBar(tabManager, this);
+            if (lastActiveTab == TAB_NOT_SELECTED_INDEX) {
+                mNavigationManager.showActiveApp();
+            } else {
+                mNavigationManager.showActiveApp(lastActiveTab, true);
+            }
+
         }
+
+        MediaSourceViewModel mediaSourceViewModel = getMediaSourceViewModel();
 
         mMediaPlaybackModel.start();
         mMediaPlaybackModel.addListener(this);
+
+        mediaSourceViewModel.getPrimaryMediaSource().observe(this, source -> {
+            onMediaSourceChanged(source);
+        });
+
         FrameLayout.LayoutParams prms = (FrameLayout.LayoutParams) mDrawerLayout.getLayoutParams();
         prms.width = getResources().getDisplayMetrics().widthPixels;
         mDrawerLayout.setLayoutParams(prms);
+    }
+
+    /**
+     * Sets the media source being browsed.
+     *
+     * @param mediaSource the new media source we are going to try to browse
+     */
+    private void onMediaSourceChanged(@Nullable MediaSource mediaSource) {
+        if(mediaSource != null && !mediaSource.equals(mCurrentMediaSource)) {
+            mCurrentMediaSource = mediaSource;
+        } else{
+            return;
+        }
+
+
+        MediaSourceViewModel mediaSourceViewModel = getMediaSourceViewModel();
+        if (mMediaPlaybackModel != null) {
+            MediaController.TransportControls transportControls =
+                    mMediaPlaybackModel.getTransportControls();
+            if (transportControls != null) {
+                transportControls.pause();
+            }
+        }
+
+        if (mediaSource != null) {
+            if (Log.isLoggable(TAG, Log.INFO)) {
+                Log.i(TAG, "Browsing: " + mediaSource.getName());
+            }
+            // Make the drawer display browse information of the selected source
+            ComponentName component = mediaSource.getBrowseServiceComponentName();
+            String packageName = mediaSource.getPackageName();
+            MediaManager.getInstance(this).setMediaClientComponent(component);
+
+            // Always go through the trampoline activity to keep all the dispatching logic there.
+          //  startActivity(new Intent(Car.CAR_INTENT_ACTION_MEDIA_TEMPLATE));
+        }
     }
 
     @Override
@@ -341,7 +423,7 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         return mNavigationManager;
     }
 
-    protected void switchApp() {
+    public void switchApp() {
         if (mActiveApp == MediaConstants.MEDIA_APP) {
             mActiveApp = MediaConstants.RADIO_APP;
             //Pause playback
@@ -536,5 +618,10 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
 
     @Override
     public void onEdgeActionReceived(String action, Bundle extras) {
+    }
+
+    public MediaSourceViewModel getMediaSourceViewModel() {
+        //return ViewModelProviders.of(this).get(MediaSourceViewModel.class);
+        return MediaSourceViewModel.get(MediaActivity.this);
     }
 }

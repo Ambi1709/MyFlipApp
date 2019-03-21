@@ -5,4 +5,10 @@
 
     <color name="psa_media_repeat_button_inactive_color">@color/psa_general_content_color1</color>
     <color name="psa_media_repeat_button_active_color">@color/psa_general_major_color1</color>
+
+    <color name="psa_media_widget_back_item_background_1">#005477</color>
+    <color name="psa_media_widget_back_item_background_2">#6291a5</color>
+
+
+    <color name="app_selection_background">@color/psa_general_background_color2</color>
 </resources>

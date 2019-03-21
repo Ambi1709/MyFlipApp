@@ -7,6 +7,7 @@ import android.media.session.MediaSession;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -21,6 +22,10 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
     private static final String TAG = "MediaPlaylistViewAdapter";
 
     static final String ITEM_AVAILABLE_KEY = "ITEM_AVAILABLE_KEY";
+
+    static final String DEFAULT_MEDIA_ID_PREFIX = "MediaId_";
+
+    private int mIdCounter = 0;
 
     List<MediaSession.QueueItem> mQueueList;
     long mCurrentQueueId;
@@ -71,9 +76,29 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
 
         MediaDescription itemDescription = queueItem.getDescription();
         ItemData.Builder builder = new ItemData.Builder();
-        builder.setId(itemDescription.getMediaId().toString())
-                .setPrimaryText(itemDescription.getTitle().toString())
-                .setSecondaryText(itemDescription.getSubtitle().toString())
+
+        String mediaId = itemDescription.getMediaId();
+        if (TextUtils.isEmpty(mediaId)){
+            mediaId = DEFAULT_MEDIA_ID_PREFIX + mIdCounter;
+            mIdCounter++;
+        }
+
+        CharSequence title = itemDescription.getTitle();
+        String titleString = "Unknown";
+        if(title != null){
+            titleString = title.toString();
+        }
+
+        CharSequence subTitle = itemDescription.getSubtitle();
+        String subTitleString = "Unknown";
+        if(subTitle != null){
+            subTitleString = subTitle.toString();
+        }
+
+
+        builder.setId(mediaId)
+                .setPrimaryText(titleString)
+                .setSecondaryText(subTitleString)
                 .setAction1ResId(R.drawable.psa_media_playlist_default_icon)
                 .setAction1SelectedResId(R.drawable.psa_media_playlist_active_icon)
                 .setAction1ViewType(ItemData.ACTION_VIEW_TYPE_IMAGEVIEW);

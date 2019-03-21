@@ -34,4 +34,18 @@
 
     <dimen name="psa_tab_weight">320dp</dimen>
 
+
+    <!--media widget-->
+    <dimen name="media_widget_image_side">256px</dimen>
+    <dimen name="media_widget_text_bottom_margin">16px</dimen>
+    <dimen name="media_widget_cover_flow_size">512px</dimen>
+    <dimen name="media_widget_cover_flow_top_margin">-75px</dimen>
+    <dimen name="media_widget_image_top_margin">48px</dimen>
+    <dimen name="media_widget_title_top_margin">16px</dimen>
+    <dimen name="media_widget_title_side_margin">32px</dimen>
+    <dimen name="media_widget_separator_margin">32px</dimen>
+    <dimen name="media_widget_pager_dimen">-360px</dimen>
+    <dimen name="media_widget_pager_dimen_brand1">-450px</dimen>
+    <!--media widget-->
+
     </resources>

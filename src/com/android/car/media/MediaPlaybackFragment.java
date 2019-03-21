@@ -95,26 +95,8 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             "com.android.car.media.localmediaplayer.LocalMediaBrowserService";
     private static final String BLUETOOTH_PACKAGE_NAME = "com.android.bluetooth";
     private static final String BLUETOOTH_CLASS_NAME =
-            "com.android.bluetooth.a2dpsink.mbs.A2dpMediaBrowserService";
-    /**
-     * The preferred ordering for bitmap to fetch. The metadata at lower indexes are preferred to
-     * those at higher indexes.
-     */
-    private static final String[] PREFERRED_BITMAP_TYPE_ORDER = {
-            MediaMetadata.METADATA_KEY_ALBUM_ART,
-            MediaMetadata.METADATA_KEY_ART,
-            MediaMetadata.METADATA_KEY_DISPLAY_ICON
-    };
+            "com.android.bluetooth.avrcpcontroller.BluetoothMediaBrowserService";
 
-    /**
-     * The preferred ordering for metadata URIs to fetch. The metadata at lower indexes are
-     * preferred to those at higher indexes.
-     */
-    private static final String[] PREFERRED_URI_ORDER = {
-            MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
-            MediaMetadata.METADATA_KEY_ART_URI,
-            MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI
-    };
 
     // The different types of Views that are contained within this Fragment.
     private static final int NO_CONTENT_VIEW = 0;
@@ -148,11 +130,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     private static final int MEDIA_SCRIM_FADE_DURATION_MS = 400;
     private static final int OVERFLOW_MENU_FADE_DURATION_MS = 250;
     private static final int NUM_OF_CUSTOM_ACTION_BUTTONS = 4;
-
-    // The default width and height for an image. These are used if the mAlbumArtView has not laid
-    // out by the time a Bitmap needs to be created to fit in it.
-    private static final int DEFAULT_ALBUM_ART_WIDTH = 320;
-    private static final int DEFAULT_ALBUM_ART_HEIGHT = 320;
 
     //It can be more than 1000 if system is very slow.
     private static final int DELAY_FOR_START_SERVICE_IN_MS = 1000;
@@ -205,8 +182,8 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     private ProgressBar mAppConnectingSpinner;
 
     private boolean mDelayedResetTitleInProgress;
-    private int mAlbumArtWidth = DEFAULT_ALBUM_ART_WIDTH;
-    private int mAlbumArtHeight = DEFAULT_ALBUM_ART_HEIGHT;
+    private int mAlbumArtWidth = Utils.DEFAULT_ALBUM_ART_WIDTH;
+    private int mAlbumArtHeight = Utils.DEFAULT_ALBUM_ART_HEIGHT;
     private int mShowTitleDelayMs;
 
     private TelephonyManager mTelephonyManager;
@@ -608,7 +585,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
         showMediaPlaybackControlsView();
         mCurrentTrackMetadata = metadata;
-        Bitmap icon = getMetadataBitmap(metadata);
+        Bitmap icon = Utils.getMetadataBitmap(metadata);
         if (!mShowingMessage) {
             mHandler.removeCallbacks(mSetTitleRunnable);
             // Show the title when the new album art starts to fade in, but don't need to show
@@ -616,7 +593,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             mHandler.postDelayed(mSetTitleRunnable,
                     icon == null || mReturnFromOnStop ? 0 : mShowTitleDelayMs);
         }
-        Uri iconUri = getMetadataIconUri(metadata);
+        Uri iconUri = Utils.getMetadataIconUri(metadata, getContext());
         if (icon != null) {
             Bitmap scaledIcon = cropAlbumArt(icon);
             if (scaledIcon != icon && !icon.isRecycled()) {
@@ -928,30 +905,6 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         int newHeight = height > mAlbumArtHeight ? mAlbumArtHeight : height;
 
         return Bitmap.createBitmap(icon, startX, startY, newWidth, newHeight);
-    }
-
-    private Bitmap getMetadataBitmap(MediaMetadata metadata) {
-        // Get the best art bitmap we can find
-        for (String bitmapType : PREFERRED_BITMAP_TYPE_ORDER) {
-            Bitmap bitmap = metadata.getBitmap(bitmapType);
-            if (bitmap != null) {
-                return bitmap;
-            }
-        }
-        return null;
-    }
-
-    private Uri getMetadataIconUri(MediaMetadata metadata) {
-        // Get the best Uri we can find
-        String iconUri = "";
-        for (String bitmapUri : PREFERRED_URI_ORDER) {
-            iconUri = metadata.getString(bitmapUri);
-            if (!TextUtils.isEmpty(iconUri)) {
-                return Uri.parse(iconUri);
-            }
-        }
-        iconUri = Utils.getUriForResource(getContext(), R.drawable.psa_media_playlist_default_icon).toString();
-        return Uri.parse(iconUri);
     }
 
     /**

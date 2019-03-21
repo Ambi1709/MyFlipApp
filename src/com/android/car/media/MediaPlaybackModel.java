@@ -558,15 +558,16 @@ public class MediaPlaybackModel {
 
         for (PlaybackState.CustomAction customAction : customActions) {
             Bundle extras = customAction.getExtras();
-
-            if (extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, SHUFFLE_UNDEFINED_STATE) != SHUFFLE_UNDEFINED_STATE) {
-                //SHUFFLE
-                mShuffleAction = customAction;
-                mShuffleState = extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState);
-            } else if (extras.getInt(MediaConstants.ACTION_REPEAT_STATE, REPEAT_UNDEFINED_STATE) != REPEAT_UNDEFINED_STATE) {
-                //REPEAT
-                mRepeatAction = customAction;
-                mRepeatState = extras.getInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
+            if (extras != null) {
+                if (extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, SHUFFLE_UNDEFINED_STATE) != SHUFFLE_UNDEFINED_STATE) {
+                    //SHUFFLE
+                    mShuffleAction = customAction;
+                    mShuffleState = extras.getInt(MediaConstants.ACTION_SHUFFLE_STATE, mShuffleState);
+                } else if (extras.getInt(MediaConstants.ACTION_REPEAT_STATE, REPEAT_UNDEFINED_STATE) != REPEAT_UNDEFINED_STATE) {
+                    //REPEAT
+                    mRepeatAction = customAction;
+                    mRepeatState = extras.getInt(MediaConstants.ACTION_REPEAT_STATE, mRepeatState);
+                }
             }
         }
     }

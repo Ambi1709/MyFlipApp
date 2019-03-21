@@ -18,8 +18,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:animateLayoutChanges="true"
-   >
+    android:animateLayoutChanges="true" >
     <!--app:carMaxWidth="@dimen/apps_max_content_width"-->
     <RelativeLayout
         android:id="@+id/initial_view"
@@ -37,6 +36,8 @@
             android:indeterminateDrawable="@drawable/music_buffering"
             android:visibility="gone" />
         <!--android:layout_height="@dimen/car_list_item_height"-->
+
+
         <ImageView
             android:id="@+id/error_icon"
             android:layout_width="@dimen/missing_permission_icon_size"

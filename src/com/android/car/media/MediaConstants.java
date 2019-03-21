@@ -140,4 +140,13 @@ public class MediaConstants {
     public static final String EDGE_ACTION_PLAY_ITEM = "PLAY_ITEM";
     public static final String EDGE_ACTION_START_PLAY= "START_PLAY";
     public static final String EDGE_ACTION_PLAY_NEXT= "PLAY_NEXT";
+
+
+    public static final String ACTION_PLAY = "com.android.car.media.localmediaplayer.ACTION_PLAY";
+    public static final String ACTION_PAUSE = "com.android.car.media.localmediaplayer.ACTION_PAUSE";
+    public static final String ACTION_NEXT = "com.android.car.media.localmediaplayer.ACTION_NEXT";
+    public static final String ACTION_PREV = "com.android.car.media.localmediaplayer.ACTION_PREV";
+    public static final int WIDGET_SCROLLING_DELAY = 100;
+    public static final String MEDIA_PLAYER_PACKAGE = "com.android.car.media";
+    public static final String MEDIA_PLAYER_CLASS = "com.android.car.media.MediaActivity";
 }
