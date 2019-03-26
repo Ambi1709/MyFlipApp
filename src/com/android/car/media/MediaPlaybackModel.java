@@ -25,6 +25,7 @@ import android.media.browse.MediaBrowser;
 import android.media.session.MediaController;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -37,6 +38,7 @@ import com.android.car.apps.common.util.Assert;
 import com.android.car.apps.common.util.Assert;
 import com.android.car.media.MediaLibraryController;
 import com.android.car.media.util.M3UPlaylistBuilder;
+import com.android.car.media.widget.CarMediaWidgetData;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -677,5 +679,41 @@ public class MediaPlaybackModel {
 
     public void reactEdgeAction(String action, Bundle extras) {
         notifyListeners((listener) -> listener.onEdgeActionReceived(action, extras));
+    }
+
+    public CarMediaWidgetData getCarMediaWidgetDataFromQueue(List<MediaSession.QueueItem> queue){
+        CarMediaWidgetData result = new CarMediaWidgetData();
+
+        long position = getActiveQueueItemId();
+
+        ArrayList<Uri> urls = new ArrayList<>();
+
+        int i = 0;
+        for (MediaSession.QueueItem item: queue){
+            MediaDescription itemDescription = item.getDescription();
+            urls.add(itemDescription.getIconUri());
+            int id = (int) item.getQueueId();
+            if( item.getQueueId() == position){
+                result.setCurrentPosition(i); // queue id is not nesecerally a position
+            }
+            ++i;
+
+        }
+        result.setUrlList(urls);
+
+        return result;
+    }
+
+    public int getCurrentMediaPosition(){
+        List<MediaSession.QueueItem> queue = getQueue();
+        long position = getActiveQueueItemId();
+        int i = 0;
+        for (MediaSession.QueueItem item: queue){
+            if( item.getQueueId() == position){
+                return i;
+            }
+            ++i;
+        }
+        return 0;
     }
 }

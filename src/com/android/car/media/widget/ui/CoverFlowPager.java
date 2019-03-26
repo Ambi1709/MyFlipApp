@@ -9,8 +9,10 @@ import android.os.Handler;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
+import android.net.Uri;
 import androidx.viewpager.widget.ViewPager;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RemoteViews;
@@ -26,14 +28,26 @@ import java.util.ArrayList;
 @RemoteViews.RemoteView
 public class CoverFlowPager extends ViewPager implements ViewPager.PageTransformer {
 
-    private static final int OFFSCREEN_PAGE_LIMIT = 3;
+    private static final String TAG = "CoverFlowPager";
+
+    private static final int OFFSCREEN_PAGE_LIMIT = 4;
     private static final int OFFSCREEN_PAGE_LIMIT_BRAND1 = 5;
     private static final float PAGE_SCALE_FACTOR_COEFFICIENT = 0.6f;
 
     private int mCurrentPosition = 0;
     private boolean mScrolled = false;
+    private boolean mNeedUpdatePosition = false;
     private Handler mHandler = new Handler();
     protected String mThemeBrand = "brand0";
+
+    private CoverFlowAdapter mPageAdapter;
+
+    private CoverFlowSelectionListener mSelectionListener;
+
+    public interface CoverFlowSelectionListener {
+        void selectNext();
+        void selectPrev();
+    }
 
     private OnPageChangeListener mOnPageChangeListener = new OnPageChangeListener() {
         @Override
@@ -44,14 +58,21 @@ public class CoverFlowPager extends ViewPager implements ViewPager.PageTransform
 
         @Override
         public void onPageSelected(int position) {
-            if (position > mCurrentPosition) {
-                Intent playIntent = new Intent(MediaConstants.ACTION_NEXT);
-                getContext().sendBroadcast(playIntent);
-            } else {
-                Intent playIntent = new Intent(MediaConstants.ACTION_PREV);
-                getContext().sendBroadcast(playIntent);
+            if (! mNeedUpdatePosition) {
+                if (position > mCurrentPosition) {
+                    if (mSelectionListener != null) {
+                        mSelectionListener.selectNext();
+                    }
+                } else if (position < mCurrentPosition) {
+                    if (mSelectionListener != null) {
+                        mSelectionListener.selectPrev();
+                    }
+                }
+                mCurrentPosition = position;
+            }else{
+                mCurrentPosition = getCurrentItem();
+                mNeedUpdatePosition = false;
             }
-            mCurrentPosition = position;
         }
 
         @Override
@@ -76,28 +97,44 @@ public class CoverFlowPager extends ViewPager implements ViewPager.PageTransform
         removeOnPageChangeListener(mOnPageChangeListener);
     }
 
-    private void init() {
+    @Override
+    public void setCurrentItem(int position){
+        setCurrentItemPrivate(position, false, false);
+    }
+    @Override
+    public void setCurrentItem(int position, boolean smooothScroll){
+        setCurrentItemPrivate(position, smooothScroll, false);
+    }
 
-      //  HomeApplication application = ((HomeApplication) getContext().getApplicationContext());
+    private void setCurrentItemPrivate(int position, boolean smoothScroll, boolean manual){
+        mNeedUpdatePosition = !manual;
+        super.setCurrentItem(position, smoothScroll);
+    }
 
-     //   mThemeBrand = PSAUtils.getCurrentTheme(getContext());
 
-        CarMediaWidgetData data = new CarMediaWidgetData(); //application.getCarMediaWidgetData();
+    public void refreshData(@Nullable CarMediaWidgetData widgetData){
+        if (widgetData == null){
+            mPageAdapter = new CoverFlowAdapter(getContext(), new ArrayList<Uri>(), clickListener);
+            setAdapter(mPageAdapter);
+        }else {
+            mPageAdapter = new CoverFlowAdapter(getContext(), widgetData.getUrlList(), clickListener);
+            setAdapter(mPageAdapter);
+            setCurrentItemPrivate(widgetData.getCurrentPosition(), false, false);
+        }
+    }
 
-        CoverFlowAdapter pagerAdapter = new CoverFlowAdapter(getContext(), data.getUrlList(), new CoverFlowAdapter.OnClickItemListener() {
-            @Override
-            public void onClickItem(int position) {
-                if (mCurrentPosition == position) {
-                    mScrolled = false;
-                    mHandler.postDelayed(new MediaRunnable(), MediaConstants.WIDGET_SCROLLING_DELAY);
-                }
-                setCurrentItem(position, true);
+    private CoverFlowAdapter.OnClickItemListener clickListener = new CoverFlowAdapter.OnClickItemListener() {
+        @Override
+        public void onClickItem(int position) {
+            if (mCurrentPosition == position) {
+                mScrolled = false;
             }
-        });
+            mNeedUpdatePosition = false;
+            setCurrentItemPrivate(position, true, true);
+        }
+    };
 
-        setAdapter(pagerAdapter);
-        setCurrentItem(data.getCurrentPosition());
-
+    private void init() {
         switch (mThemeBrand) {
             case "brand0":
                 setOffscreenPageLimit(OFFSCREEN_PAGE_LIMIT);
@@ -115,8 +152,20 @@ public class CoverFlowPager extends ViewPager implements ViewPager.PageTransform
         addOnPageChangeListener(mOnPageChangeListener);
     }
 
+    public void clear(){
+        CarMediaWidgetData data = new CarMediaWidgetData();
+        mPageAdapter = new CoverFlowAdapter(getContext(), data.getUrlList(), clickListener);
+        setAdapter(mPageAdapter);
+        setCurrentItemPrivate(data.getCurrentPosition(), false, false);
+    }
+
+    public void setCoverFlowSelectionListener(CoverFlowSelectionListener listener){
+        mSelectionListener = listener;
+    }
+
     @Override
     public void transformPage(@NonNull View view, float position) {
+
         ViewPager viewPager = (ViewPager) view.getParent();
         int leftInScreen = view.getLeft() - viewPager.getScrollX();
         int centerXInViewPager = leftInScreen + view.getMeasuredWidth() / 2;
@@ -166,23 +215,6 @@ public class CoverFlowPager extends ViewPager implements ViewPager.PageTransform
                 ViewCompat.setElevation(view, scaleFactor);
                 view.setOutlineProvider(null);
                 break;
-        }
-    }
-
-    private class MediaRunnable implements Runnable {
-        @Override
-        public void run() {
-            if (!mScrolled) {
-                Intent intent = new Intent();
-                intent.setComponent(new ComponentName(MediaConstants.MEDIA_PLAYER_PACKAGE, MediaConstants.MEDIA_PLAYER_CLASS));
-                //original flags were FLAG_ACTIVITY_NEW_TASK and FLAG_ACTIVITY_MULTIPLE_TASK but if use only this flag we will have many instance of Activity
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
-                        Intent.FLAG_ACTIVITY_NEW_TASK |
-                        Intent.FLAG_ACTIVITY_MULTIPLE_TASK |
-                        Intent.FLAG_ACTIVITY_NO_HISTORY);
-
-                getContext().startActivity(intent);
-            }
         }
     }
 }

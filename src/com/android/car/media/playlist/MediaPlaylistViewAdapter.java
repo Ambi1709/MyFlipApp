@@ -4,9 +4,11 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.media.MediaDescription;
 import android.media.session.MediaSession;
+import android.net.Uri;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
@@ -84,13 +86,13 @@ public class MediaPlaylistViewAdapter extends RecyclerView.Adapter<RecyclerView.
         }
 
         CharSequence title = itemDescription.getTitle();
-        String titleString = "Unknown";
+        String titleString = MediaStore.UNKNOWN_STRING;
         if(title != null){
             titleString = title.toString();
         }
 
         CharSequence subTitle = itemDescription.getSubtitle();
-        String subTitleString = "Unknown";
+        String subTitleString = MediaStore.UNKNOWN_STRING;
         if(subTitle != null){
             subTitleString = subTitle.toString();
         }

@@ -96,7 +96,7 @@ public class Utils {
         if (iconUri != null) {
             try {
                 bmp = MediaStore.Images.Media.getBitmap(context.getContentResolver(), iconUri);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }

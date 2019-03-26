@@ -2,7 +2,9 @@ package com.android.car.media.widget.ui;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import androidx.viewpager.widget.PagerAdapter;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,18 +20,25 @@ import java.util.List;
 
 public class CoverFlowAdapter extends PagerAdapter {
 
+    private static final String TAG = "CoverFlowAdapter";
+
     public interface OnClickItemListener {
         void onClickItem(int position);
     }
 
     private Context mContext;
-    private List<String> mList;
+    private List<Uri> mList;
     private OnClickItemListener mListener;
 
-    public CoverFlowAdapter(Context context, List<String> listItems, OnClickItemListener listener) {
+    public CoverFlowAdapter(Context context, List<Uri> listItems, OnClickItemListener listener) {
         mContext = context;
         mList = listItems;
         mListener = listener;
+    }
+
+    public void updateList(List<Uri> listItems){
+        mList = listItems;
+        notifyDataSetChanged();
     }
 
     @Override

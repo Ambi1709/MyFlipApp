@@ -1,18 +1,19 @@
 package com.android.car.media.widget;
 
+import android.net.Uri;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CarMediaWidgetData {
 
-    private List<String> mUrlList = new ArrayList<>();
+    private List<Uri> mUrlList = new ArrayList<>();
     private int mCurrentPosition;
 
-    public List<String> getUrlList() {
+    public List<Uri> getUrlList() {
         return mUrlList;
     }
 
-    public void setUrlList(List<String> list) {
+    public void setUrlList(List<Uri> list) {
         mUrlList = list;
     }
 

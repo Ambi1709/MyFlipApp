@@ -33,6 +33,7 @@ import com.android.car.media.MediaPlaybackModel;
 import com.android.car.media.MediaPlaybackModel.Listener;
 import com.android.car.media.common.MediaAppSelectorWidget;
 import com.android.car.media.common.AppSelectionFragment;
+import com.android.car.media.widget.ui.CoverFlowPager;
 
 import com.harman.psa.widget.PSABaseFragment;
 
@@ -41,8 +42,7 @@ import com.android.car.media.R;
 import java.util.List;
 
 
-
-public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaPlaybackModel.Listener {
+public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaPlaybackModel.Listener, CoverFlowPager.CoverFlowSelectionListener {
 
     private static final String TAG = "WidgetMediaPlayerFragment";
 
@@ -51,7 +51,8 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
     private Handler mHandler = new Handler();
     private static final long DELAY_SHOW_NO_CONTENT_VIEW_MS = 3000;
 
-    private ImageView mArtView;
+    private CoverFlowPager mArtViewPager;
+
     private ImageView mSwitchToRadioButton;
     private ImageView mPlayPauseButton;
     private ImageView mNextButton;
@@ -71,7 +72,8 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
         MediaAppSelectorWidget appSelector = v.findViewById(R.id.app_switch_container);
         appSelector.setFragmentActivity(getHostActivity());
 
-        mArtView = (ImageView) v.findViewById(R.id.albumArtWidget);
+        mArtViewPager = (CoverFlowPager) v.findViewById(R.id.albumArtCoverFlow);
+
         mSwitchToRadioButton = (ImageView) v.findViewById(R.id.switch_to_radio_button);
         mPlayPauseButton = (ImageView) v.findViewById(R.id.play_pause_button);
         mNextButton = (ImageView) v.findViewById(R.id.next_button);
@@ -88,8 +90,10 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
         mMediaPlaybackModel = ((MediaActivity) getHostActivity()).getPlaybackModel();
         mMediaPlaybackModel.addListener(this);
 
+        mArtViewPager.setCoverFlowSelectionListener(this);
+
         onMetadataChanged(mMediaPlaybackModel.getMetadata());
-       // onQueueChanged(mMediaPlaybackModel.getQueue());
+        onQueueChanged(mMediaPlaybackModel.getQueue());
         onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
     }
     @Override
@@ -183,7 +187,7 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
     public void onMediaConnected() {
         Assert.isMainThread();
         onMetadataChanged(mMediaPlaybackModel.getMetadata());
-       // onQueueChanged(mMediaPlaybackModel.getQueue());
+        onQueueChanged(mMediaPlaybackModel.getQueue());
         onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
     }
 
@@ -195,9 +199,10 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
     @Override
     public void onMediaConnectionFailed(CharSequence failedClientName) {
         Assert.isMainThread();
+        mHandler.removeCallbacks(mShowNoContentViewRunnable);
         mTitle.setText(failedClientName);
         mSubTitle.setText("Connection failed");
-        mArtView.setImageDrawable(null);
+        mArtViewPager.clear();
     }
 
     @Override
@@ -212,6 +217,7 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
         if (state == null) {
             return;
         }
+        mHandler.removeCallbacks(mShowNoContentViewRunnable);
         if (state.getState() == PlaybackState.STATE_ERROR) {
             if (Log.isLoggable(TAG, Log.DEBUG)) {
                 Log.d(TAG, "ERROR: " + state.getErrorMessage());
@@ -221,9 +227,11 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
                     : state.getErrorMessage().toString();
             mTitle.setText("");
             mSubTitle.setText(message);
-            mArtView.setImageDrawable(null);
+            mArtViewPager.clear();
             return;
         }
+
+        mArtViewPager.setCurrentItem(mMediaPlaybackModel.getCurrentMediaPosition());
 
         int playbackState = state.getState();
         if (playbackState == PlaybackState.STATE_PLAYING){
@@ -253,36 +261,6 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
         Bitmap icon = Utils.getMetadataBitmap(metadata);
         Uri iconUri = Utils.getMetadataIconUri(metadata, getContext());
 
-        if (icon != null) {
-            mArtView.setImageBitmap(icon);
-        } else if (iconUri != null) {
-            if (mDownloader == null) {
-                mDownloader = new BitmapDownloader(getContext());
-            }
-            final int flags = BitmapWorkerOptions.CACHE_FLAG_DISK_DISABLED
-                    | BitmapWorkerOptions.CACHE_FLAG_MEM_DISABLED;
-            if (Log.isLoggable(TAG, Log.VERBOSE)) {
-                Log.v(TAG, "Album art size " + mAlbumArtWidth + "x" + mAlbumArtHeight);
-            }
-
-            BitmapWorkerOptions bitmapWorkerOptions = new BitmapWorkerOptions.Builder(getContext())
-                    .resource(iconUri)
-                    .height(mAlbumArtHeight)
-                    .width(mAlbumArtWidth)
-                    .cacheFlag(flags)
-                    .build();
-
-            mDownloader.getBitmap(bitmapWorkerOptions,
-                    new BitmapDownloader.BitmapCallback() {
-                        @Override
-                        public void onBitmapRetrieved(Bitmap bitmap) {
-                            mArtView.setImageBitmap(bitmap);
-                        }
-                    });
-        } else {
-            mArtView.setBackgroundColor(mMediaPlaybackModel.getPrimaryColorDark());
-        }
-
         mTitle.setText(metadata.getString(MediaMetadata.METADATA_KEY_TITLE));
         mSubTitle.setText(metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
                 + " - "
@@ -292,25 +270,56 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
     private final Runnable mShowNoContentViewRunnable = () -> {
         mTitle.setText("");
         mSubTitle.setText("");
-        mArtView.setImageDrawable(null);
+        mArtViewPager.clear();
+        mNextButton.setEnabled(false);
+        mPlayPauseButton.setEnabled(false);
     };
 
     @Override
     public void onQueueChanged(List<MediaSession.QueueItem> queue) {
-        //
+        Assert.isMainThread();
+        mHandler.removeCallbacks(mShowNoContentViewRunnable);
+        CarMediaWidgetData data = mMediaPlaybackModel.getCarMediaWidgetDataFromQueue(queue);
+        mArtViewPager.refreshData(data);
+        mPlayPauseButton.setEnabled(true);
     }
 
     @Override
     public void onSessionDestroyed(CharSequence destroyedMediaClientName) {
         Assert.isMainThread();
+        mHandler.removeCallbacks(mShowNoContentViewRunnable);
         mTitle.setText("");
         mSubTitle.setText("");
-        mArtView.setImageDrawable(null);
+        mArtViewPager.clear();
+        mNextButton.setEnabled(false);
+        mPlayPauseButton.setEnabled(false);
     }
 
     @Override
     public void onEdgeActionReceived(String action, Bundle extras) {
         //
+    }
+
+    public void selectNext(){
+        MediaController.TransportControls transportControls =
+                mMediaPlaybackModel.getTransportControls();
+
+        if (!mMediaPlaybackModel.isConnected()) {
+            Log.e(TAG, "Unable to send action. The MediaPlaybackModel is not connected.");
+            return;
+        }
+        transportControls.skipToNext();
+    }
+
+    public void selectPrev(){
+        MediaController.TransportControls transportControls =
+                mMediaPlaybackModel.getTransportControls();
+
+        if (!mMediaPlaybackModel.isConnected()) {
+            Log.e(TAG, "Unable to send action. The MediaPlaybackModel is not connected.");
+            return;
+        }
+        transportControls.skipToPrevious();
     }
 
 }

@@ -26,9 +26,8 @@
                 android:layout_above="@+id/subTitle"
                 android:layout_centerInParent="true"
                 android:maxLines="1"
-                android:text="To be implemented"/>
-
-
+                android:text="To be implemented"
+                android:textColor="@color/psa_general_content_color1" />
         </RelativeLayout>
 
 
@@ -43,24 +42,27 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:tint="@color/psa_general_content_color1"
-                android:src="@drawable/psa_switch_to_media_button_icon"/>
+                android:padding="30px"
+                android:src="@drawable/psa_switch_to_media_button_icon"
+                android:tint="@color/psa_general_content_color1" />
 
             <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
                 android:id="@+id/play_pause_button"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:tint="@color/psa_general_content_color1"
-                android:src="@drawable/psa_media_button_icon_pause"/>
+                android:padding="30px"
+                android:src="@drawable/psa_media_button_icon_pause"
+                android:tint="@color/psa_general_content_color1" />
 
             <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
                 android:id="@+id/mute_button"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:tint="@color/psa_general_content_color1"
-                android:src="@drawable/psa_media_microphone_on"/>
+                android:padding="30px"
+                android:src="@drawable/psa_media_microphone_on"
+                android:tint="@color/psa_general_content_color1" />
 
         </LinearLayout>
     </LinearLayout>

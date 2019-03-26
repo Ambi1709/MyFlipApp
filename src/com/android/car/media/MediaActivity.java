@@ -41,6 +41,7 @@ import com.harman.psa.widget.PSABaseNavigationManager;
 import com.harman.psa.widget.PSATabBarManager;
 import com.harman.psa.widget.toast.PSAToast;
 
+import com.harman.psa.widget.PSAUtils;
 
 import java.util.List;
 
@@ -251,7 +252,6 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
                 getMainContentContainerId());
 
         if (mIsOpenedAsWidget){
-       // if (true){
 
             getTabBarManager().hideTabBar();
             if (getSupportActionBar() != null) {
@@ -319,7 +319,9 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
         });
 
         FrameLayout.LayoutParams prms = (FrameLayout.LayoutParams) mDrawerLayout.getLayoutParams();
-        prms.width = getResources().getDisplayMetrics().widthPixels;
+       // prms.width = getResources().getDisplayMetrics().widthPixels;
+        prms.width = FrameLayout.LayoutParams.MATCH_PARENT; // open to full screen (but consider nav bar)
+
         mDrawerLayout.setLayoutParams(prms);
     }
 
