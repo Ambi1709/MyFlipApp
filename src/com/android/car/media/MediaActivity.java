@@ -579,6 +579,8 @@ public class MediaActivity extends PSABaseActivity implements MediaPlaybackModel
     @Override
     public void onMediaAppChanged(@Nullable ComponentName currentName,
                                   @Nullable ComponentName newName) {
+        MediaSourceViewModel mediaSourceViewModel = getMediaSourceViewModel();
+        mediaSourceViewModel.setPrimaryMediaSource(new MediaSource(this, newName.getPackageName()));
 
     }
 

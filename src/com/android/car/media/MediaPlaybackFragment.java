@@ -51,6 +51,7 @@ import com.android.car.apps.common.BitmapDownloader;
 import com.android.car.apps.common.BitmapWorkerOptions;
 import com.android.car.media.common.ColorChecker;
 import com.android.car.apps.common.util.Assert;
+import com.android.car.media.common.source.MediaSourceViewModel;
 import com.android.car.media.util.widgets.PlayPauseStopImageView;
 import com.android.car.usb.PSAUsbStateService;
 import com.android.car.usb.UsbDevice;
@@ -196,6 +197,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
     /* App bar buttons */
     private PSAAppBarButton mSourceSwitchButton;
+    private DropdownButton mSourceSwitchDropdownButton;
 
     private DropdownDialog mDropdownDialog;
 
@@ -275,6 +277,22 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         onMetadataChanged(mMediaPlaybackModel.getMetadata());
         onQueueChanged(mMediaPlaybackModel.getQueue());
         onPlaybackStateChanged(mMediaPlaybackModel.getPlaybackState());
+
+
+        MediaSourceViewModel mediaSourceViewModel = ((MediaActivity)getHostActivity()).getMediaSourceViewModel();
+        mediaSourceViewModel.getPrimaryMediaSource().observe(this, source -> setActiveSourceDropdown(source.getPackageName()));
+    }
+
+    private void setActiveSourceDropdown(String source){
+        if (mSourceSwitchDropdownButton != null) {
+            if (mSourceIconMap.containsKey(source)) {
+                mSourceSwitchDropdownButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(),
+                        mSourceIconMap.get(source), mContext.getTheme()));
+            } else {
+                mSourceSwitchDropdownButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(),
+                        R.drawable.psa_media_source_folder, getContext().getTheme()));
+            }
+        }
     }
 
     @Override
@@ -357,7 +375,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         /* source switch button */
         //TODO implement source selection
         generateSourceIconMap();
-        DropdownButton sourceSwitchButton = (DropdownButton) LayoutInflater.from(getContext()).inflate(
+        mSourceSwitchDropdownButton = (DropdownButton) LayoutInflater.from(getContext()).inflate(
                 R.layout.psa_view_source_switch_button,
                 getAppBarView().getContainerForPosition(PSAAppBarButton.Position.LEFT_SIDE_3),
                 false);
@@ -365,7 +383,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         Bundle args = getArguments();
         if (args != null && args.containsKey(USB_SOURCE_ID)) {
             mSourceId = args.getString(USB_SOURCE_ID);
-            if (!isServiceRunning(CARLOCALMEDIAPLAYER_CLASS_NAME, mContext)) {
+            if (!isServiceRunning(CARLOCALMEDIAPLAYER_CLASS_NAME, mContext, true)) {
                 startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
                         CARLOCALMEDIAPLAYER_CLASS_NAME);
 
@@ -379,16 +397,16 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         if (!TextUtils.isEmpty(mSourceId)) {
             int icon = mSourceIconMap.containsKey(mSourceId) ? mSourceIconMap.get(mSourceId) :
                     R.drawable.psa_media_source_usb;
-            sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(), icon,
+            mSourceSwitchDropdownButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(), icon,
                     mContext.getTheme()));
         } else {
             mSourceId = "2";
-            sourceSwitchButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(),
+            mSourceSwitchDropdownButton.setImageDrawable(ResourcesCompat.getDrawable(getResources(),
                     mSourceIconMap.get(mSourceId), mContext.getTheme()));
         }
-        mSourceSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_3, sourceSwitchButton);
+        mSourceSwitchButton = new PSAAppBarButton(PSAAppBarButton.Position.LEFT_SIDE_3, mSourceSwitchDropdownButton);
         getAppBarView().replaceAppBarButton(mSourceSwitchButton);
-        sourceSwitchButton.setOnDropdownButtonClickEventListener(mSourceButtonClickListener);
+        mSourceSwitchDropdownButton.setOnDropdownButtonClickEventListener(mSourceButtonClickListener);
 
         // Note: at registration, TelephonyManager will invoke the callback with the current state.
         mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
@@ -1034,14 +1052,27 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     private final OnDropdownButtonClickEventListener mSourceButtonClickListener = this::showSourcesDialog;
 
     private void startPlayerService(String media_package, String media_class) {
-        Intent launchIntent = mContext.getPackageManager().
+        /*Intent launchIntent = mContext.getPackageManager().
                 getLaunchIntentForPackage(MEDIA_TEMPLATE_COMPONENT);
         launchIntent.putExtra(MediaManager.KEY_MEDIA_PACKAGE, media_package);
         launchIntent.putExtra(MediaManager.KEY_MEDIA_CLASS, media_class);
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
                 Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
         startActivity(launchIntent);
-        Log.w(TAG, "StartPlayerService intent was sent");
+        Log.w(TAG, "StartPlayerService intent was sent");*/
+
+        if (mMediaPlaybackModel != null) {
+            MediaController.TransportControls transportControls =
+                    mMediaPlaybackModel.getTransportControls();
+            if (transportControls != null){
+                transportControls.pause();
+                }
+            }
+            ComponentName component = new ComponentName(
+                media_package,
+                media_class
+            );
+        MediaManager.getInstance(getContext()).setMediaClientComponent(component);
     }
 
     private List<String> getGrantedPermissions(String packageName) {
@@ -1185,7 +1216,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
     }
 
     private void generateSourceIconMap() {
-        mSourceIconMap.put(BLUETOOTH_SOURCE_ID, R.drawable.psa_media_source_bluetooth);
+        mSourceIconMap.put(BLUETOOTH_PACKAGE_NAME, R.drawable.psa_media_source_bluetooth);
         mSourceIconMap.put("2", R.drawable.psa_media_source_folder);
         //to be implement in the future
         //mSourceIconMap.put("2", R.drawable.psa_media_source_aux);
@@ -1245,7 +1276,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             }
 
             if (!getGrantedPermissions(CARLOCALMEDIAPLAYER_PACKAGE_NAME).contains(Manifest.permission.READ_EXTERNAL_STORAGE)
-                    && !BLUETOOTH_SOURCE_ID.equals(mSourceId)) {
+                    && !BLUETOOTH_PACKAGE_NAME.equals(mSourceId)) {
                 Log.w(TAG, "Permission is not granted");
                 return;
             }
@@ -1257,9 +1288,17 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         // TODO refresh sources list
         mDropdownDialog = new DropdownDialog(mContext, DropdownDialog.VERTICAL);
         mSourceIconMap.entrySet().forEach(
-                e -> mDropdownDialog.addDropdownItem(
-                        new DropdownItem(e.getKey(), e.getKey() + " source", e.getValue())
-                )
+                e -> {
+                    if (e.getKey().equals(BLUETOOTH_PACKAGE_NAME)) {
+                        mDropdownDialog.addDropdownItem(
+                                new DropdownItem(e.getKey(), "Bluetooth", e.getValue()));
+                    } else {
+                        mDropdownDialog.addDropdownItem(
+                                new DropdownItem(e.getKey(), e.getKey() + " source", e.getValue()));
+
+
+                    }
+                }
         );
         addUsbItems();
         //Set listener for action item clicked
@@ -1297,12 +1336,12 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
                     ResourcesCompat.getDrawable(getResources(), mSourceIconMap.get(mSourceId), mContext.getTheme()));
         }
 
-        if (BLUETOOTH_SOURCE_ID.equals(mSourceId)) {
+        if (BLUETOOTH_PACKAGE_NAME.equals(mSourceId)) {
             startPlayerService(BLUETOOTH_PACKAGE_NAME,
                     BLUETOOTH_CLASS_NAME);
             return;
         } else {
-            if (!isServiceRunning(CARLOCALMEDIAPLAYER_CLASS_NAME, mContext)) {
+            if (!isServiceRunning(CARLOCALMEDIAPLAYER_CLASS_NAME, mContext, true)) {
                 startPlayerService(CARLOCALMEDIAPLAYER_PACKAGE_NAME,
                         CARLOCALMEDIAPLAYER_CLASS_NAME);
 
@@ -1318,7 +1357,7 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
         }
 
         if (!getGrantedPermissions(CARLOCALMEDIAPLAYER_PACKAGE_NAME).contains(Manifest.permission.READ_EXTERNAL_STORAGE)
-                && !BLUETOOTH_SOURCE_ID.equals(mSourceId)) {
+                && !BLUETOOTH_PACKAGE_NAME.equals(mSourceId)) {
             Log.w(TAG, "Permission is not granted");
             return;
         }
@@ -1421,6 +1460,18 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
             });
         }
         /***** Temporary *****/
+    }
+
+    public boolean isServiceRunning(String serviceClassName, Context context, boolean ifCurrent) {
+        boolean result = isServiceRunning(serviceClassName, context);
+        if (mMediaPlaybackModel != null && ifCurrent) {
+            if (mMediaPlaybackModel.getCurrentComponentName() != null) {
+                result = result && mMediaPlaybackModel.getCurrentComponentName().getClassName().equals(serviceClassName);
+            } else {
+                result = false; //no connection
+            }
+        }
+        return result;
     }
 
     public boolean isServiceRunning(String serviceClassName, Context context) {

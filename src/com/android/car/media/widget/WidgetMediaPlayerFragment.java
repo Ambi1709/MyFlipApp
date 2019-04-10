@@ -176,7 +176,7 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
     @Override
     public void onMediaAppChanged(@Nullable ComponentName currentName,
                                   @Nullable ComponentName newName) {
-        //
+        mShowNoContentViewRunnable.run();
     }
 
     @Override
@@ -271,6 +271,7 @@ public class WidgetMediaPlayerFragment extends PSABaseFragment implements MediaP
         mTitle.setText("");
         mSubTitle.setText("");
         mArtViewPager.clear();
+        mPlayPauseButton.setImageResource(R.drawable.psa_media_button_icon_play);
         mNextButton.setEnabled(false);
         mPlayPauseButton.setEnabled(false);
     };

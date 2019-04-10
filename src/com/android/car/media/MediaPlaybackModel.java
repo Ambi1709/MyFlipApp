@@ -716,4 +716,8 @@ public class MediaPlaybackModel {
         }
         return 0;
     }
+
+    public ComponentName getCurrentComponentName() {
+        return mCurrentComponentName;
+    }
 }
