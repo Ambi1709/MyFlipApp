@@ -280,7 +280,15 @@ public class MediaPlaybackFragment extends MediaBaseFragment implements MediaPla
 
 
         MediaSourceViewModel mediaSourceViewModel = ((MediaActivity)getHostActivity()).getMediaSourceViewModel();
-        mediaSourceViewModel.getPrimaryMediaSource().observe(this, source -> setActiveSourceDropdown(source.getPackageName()));
+        mediaSourceViewModel.getPrimaryMediaSource().observe(
+                this, source -> {
+                    if (source != null) {
+                        setActiveSourceDropdown(source.getPackageName());
+                    } else{
+                        Log.w(TAG, "Media source isn't initialized yet.");
+                    }
+                }
+        );
     }
 
     private void setActiveSourceDropdown(String source){
